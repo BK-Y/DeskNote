@@ -1,0 +1,5 @@
+// desknote.rc - 资源脚本文件
+// 编译时 windres 会把它编译成 .res，链接进 exe
+
+// 应用图标（ID = 1，使用 desknote.ico 文件）
+1 ICON "desknote.ico"
