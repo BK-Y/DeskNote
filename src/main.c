@@ -144,8 +144,8 @@ LRESULT CALLBACK WndProc(
         if (id == IDM_ABOUT)
         {
             MessageBoxW(hwnd,
-                L"DeskNote v0.1.0\n\n轻量桌面便签\n\n开源工具链：\nMinGW-w64 GCC + CMake\n\nWin32 API + md4c + Rich Edit",
-                L"关于 DeskNote",
+                L"DeskNote v0.1.0\n\n轻量桌面便签\n\n开源工具链：\nMinGW-w64 GCC + CMake\n\nWin32 API + md4c",
+                                L"关于 DeskNote",
                 MB_OK | MB_ICONINFORMATION);
             return 0;
         }

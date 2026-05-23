@@ -1,53 +1,54 @@
 # Plan 进度表（Progress Tracker）
 
-目的：记录并追踪各个 Plan / 任务的当前状态，方便团队与个人查看进度、瓶颈与下步行动。
+## 当前阶段：A — 搭建渲染基础
 
-使用建议：
-- 轻量首选：把本文件作为单一事实来源（single source of truth）。
-- 每次任务状态变更时，更新此文件并提交（或者使用 issue/Project 自动化同步）。
-- 对于需要更细粒度追踪的任务，建议同时创建 GitHub Issue 并在此表中填入 Issue 链接。
+| ID | Title | Status | Estimate | Progress | Blockers | Notes |
+|---:|:------|:------:|:--------:|:--------:|:--------:|:------|
+| A.1 | 创建 `src/render.c` / `render.h`（D2D + DWrite 生命周期） | 📝 todo | 2d | 0% | — | Factory → RenderTarget → DWriteFactory → TextFormat |
+| A.2 | 创建 `src/platform/render.h` / `render_win32.c` | 📝 todo | 1d | 0% | — | 统一声明，链接期选择 |
+| A.3 | 初始化 `lib/md4c/` 子模块 | ⏳ todo | 0.5d | 0% | 需 git submodule update | |
+| A.4 | 重构 titlebar.c 从 GDI 改 D2D | 📝 todo | 1d | 0% | 依赖 A.1 | |
+| A.5 | 废弃 lib/widget.h/c | 📝 todo | — | 0% | — | 从 CMakeLists.txt 移除 |
+| A.6 | 验证编译通过 | ⏳ todo | 0.5d | 0% | 依赖 A.1~A.5 | |
 
-字段说明：
-- ID：计划或任务的唯一标识（如 `PL-001` / `T1.1` / `PL-002a-T2`）。
-- Title：简短标题。
-- Owner：负责人。
-- Status：状态（todo / in-progress / blocked / review / done）。
-- Start：开始日期（可选）。
-- Due：预期完成日期（可选）。
-- Estimate：预计工时（可选）。
-- Progress：完成百分比（0-100%）。
-- Blockers：当前阻塞项（若无填 - ）。
-- Notes：短备注或下一步动作。
-- Design refs：相关设计文档或 ADR 路径。
+## 阶段 B：文本编辑
 
----
+| ID | Title | Status | Estimate | Progress | Blockers | Notes |
+|---:|:------|:------:|:--------:|:--------:|:--------:|:------|
+| B.1 | 编辑器核心（文本缓冲 + 光标 + 键盘 + D2D 绘制） | 📝 todo | 3d | 0% | 依赖 A.1 | 单窗口，WYSIWYG |
+| B.2 | 编辑器 ↔ notefile 联通 | ⏳ todo | 1d | 0% | 依赖 B.1 | |
+| B.3 | 失焦自动保存 | ⏳ todo | 0.5d | 0% | 依赖 B.1 | |
+| B.4 | 标题栏显示文件名 | ⏳ todo | 0.5d | 0% | 依赖 B.1 | |
 
-## 总览表
+## 阶段 C：Markdown 渲染接入
 
-| ID | Title | Owner | Status | Start | Due | Estimate | Progress | Blockers | Notes | Design refs |
-|---:|:------|:------|:------:|:-----:|:---:|:--------:|:--------:|:--------:|:-----:|:-----------:|
-| PL-001 | 核心数据模型与恢复 | peiyang | in-progress | 2026-05-20 | 2026-06-02 | 10.5d | 10% | - | M1 存储层开始 | docs/plan/PL-001-core.md |
-| PL-001-T1.1 | note 存储目录与 I/O API | peiyang | in-progress | 2026-05-20 | 2026-05-21 | 2d | 20% | - | 设计并实现 API | docs/plan/PL-001-core.md |
-| PL-001-T2.1 | journal 事件格式 | peiyang | todo | - | 2026-05-24 | 1.5d | 0% | - | 需要定义 schema | docs/architecture.md |
-| PL-001-T8.1 | 集成 demo（smoke-test） | peiyang | todo | - | 2026-05-25 | 0.5d | 0% | - | demo 将验证恢复逻辑 | docs/plan/PL-001-core.md |
-| PL-002 | Markdown 解析与显示（总览） | peiyang | todo | - | 2026-06-05 | 10d | 0% | - | 拆分 PL-002a..d | docs/plan/PL-002-markdown-renderer.md |
-| PL-002a | Parser Adapter 与 DocumentModel | peiyang | in-progress | 2026-05-21 | 2026-05-26 | 5d | 10% | - | 实现同步 parse 与测试 | docs/plan/PL-002a-parser.md |
-| PL-002b | Renderer（HTML Preview） | peiyang | todo | - | 2026-05-29 | 5.5d | 0% | 需决定 WebView 技术 | docs/plan/PL-002b-renderer.md |
+| ID | Title | Status | Estimate | Progress | Blockers | Notes |
+|---:|:------|:------:|:--------:|:--------:|:--------:|:------|
+| C.1 | 增量 AST 引擎（core/parser.c） | 📝 todo | — | 0% | 你的核心 | 按键分类 + 状态机 + 增量更新 |
+| C.2 | AST → 编辑器渲染联通 | ⏳ todo | 2d | 0% | 依赖 C.1, B.1 | |
+| C.3 | @ ! # 标签着色 | ⏳ todo | 1d | 0% | 依赖 C.2 | |
+| C.4 | 勾选框渲染与交互 | ⏳ todo | 1d | 0% | 依赖 C.2 | |
 
+## ✅ 已完成
 
----
-
-## 使用与维护指南
-- 更新频率：建议每日开发结束时更新本表（或任务完成时即时更新）。
-- 责任：每项任务的 `Owner` 负责保持该行信息最新。若多人协作，Owner 可设为协作人。
-- Blockers：在此列列出阻塞进度的问题并在 Notes 中写明需要谁来解决；方便在 daily/weekly review 中跟进。
-- 追踪工具：若你使用 GitHub Issues / Projects，建议在 Issue 描述中写明 Plan ID，并把 Issue 链接填入 Notes 或在 Progress 表中添加 `#issue_number`。
-
----
-
-## 快速操作（脚本/自动化建议）
-- 可编写小脚本把 GitHub Issue 的状态同步到本表（或反向），也可用 GitHub Projects Board 做可视化进度追踪。
-
----
-
-（你可以直接编辑此文件来更新进度，或者让我根据 issue/PR 自动化同步。需要我现在把当前计划的 tasks 全部展开并写入表格吗？）
+| ID | Title | Status | Notes |
+|---:|:------|:------:|:------|
+| 0.1 | 环境搭建（MSYS2 + MinGW + CMake） | ✅ done | |
+| 0.2 | 编译第一个 Hello World | ✅ done | |
+| 1.1 | 注册窗口类、创建窗口、消息循环 | ✅ done | |
+| 1.2 | WS_POPUP 无边框、自绘黄色标题栏（GDI） | ✅ done | titlebar.c |
+| 1.3 | 拖拽移动 | ✅ done | main.c |
+| 1.4 | 关闭按钮 | ✅ done | titlebar.c |
+| 1.4b | 标题栏拆分为独立文件 | ✅ done | titlebar.h/.c |
+| 1.4c | 关闭按钮悬停变红 | ✅ done | titlebar.c |
+| 1.4d | 应用图标 | ✅ done | desknote.rc |
+| 1.5 | 右下角 resize | ✅ done | window.c |
+| 1.6 | 置顶按钮 | ✅ done | titlebar.c |
+| 1.7 | 靠边隐藏 | ✅ done | window.c |
+| 3.1 | `%APPDATA%\DeskNote\` 目录创建 | ✅ done | storage.c |
+| 3.2 | `notes\` 子目录创建 | ✅ done | storage.c |
+| 3.7~3.9 | 右键弹出菜单 | ✅ done | main.c |
+| 3.16 | 关于弹窗 | ✅ done | main.c |
+| 4.1~4.3 | 文件读写、命名规则 | ✅ done | notefile.c（UI 未接入）|
+| 4.6 | 关闭时保存 last_file | ✅ done | notefile.c |
+| 2.2~2.4 | md4c 集成、md_parser 封装 | ✅ done | md_parser.c |
