@@ -8,23 +8,24 @@ add_definitions(-DUNICODE -D_UNICODE)
 # 第三方库：md4c（Markdown 解析器）
 # ============================================================
 add_library(md4c STATIC
-    lib/md4c/md4c-master/src/md4c.c
+    lib/md4c/src/md4c.c
 )
-target_include_directories(md4c PUBLIC lib/md4c/md4c-master/src)
+target_include_directories(md4c PUBLIC lib/md4c/src)
 target_compile_definitions(md4c PRIVATE MD4C_USE_UTF16)
 
 # ============================================================
 # 应用源文件
 # ============================================================
 set(SOURCES
-    lib/widget.c
-    src/main.c
-    src/storage.c
-    src/notefile.c
-    src/md_parser.c
-    src/ui/titlebar.c
-    src/ui/window.c
-
+    src/app/app.c
+    src/core/document.c
+    src/editor/editor.c
+    src/platform/win32/window.c
+    src/render/render.c
+    src/storage/note_store.c
+    src/storage/state_store.c
+    src/ui/editor_view.c
+ 
     resources/desknote.rc
 )
 
@@ -33,10 +34,9 @@ add_executable(desknote WIN32 ${SOURCES})
 
 # 链接
 target_link_libraries(desknote
-    md4c
     user32
     gdi32
-    comctl32
-    comdlg32
-    shell32
+    d2d1
+    dwrite
+    imm32
 )

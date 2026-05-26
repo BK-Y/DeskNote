@@ -16,6 +16,7 @@
   - [5.3 句柄](#53-句柄)
   - [5.4 目标文件](#54-目标文件-o--obj)
   - [5.5 调用约定](#55-调用约定-winapi--callback)
+  - [5.6 不透明结构体与前置声明](#56-不透明结构体与前置声明)
 - [6. 术语表](#6-术语表)
 
 ---
@@ -388,6 +389,100 @@ MessageBox(NULL, L"hello", L"title", MB_OK);
 ```
 
 `__stdcall`：参数从右往左入栈，被调用者清理栈。Win32 API 全部使用此约定。
+
+### 5.6 不透明结构体与前置声明
+
+```c
+typedef struct RenderContext RenderContext;
+```
+
+这句**不是在声明变量**，而是在做两件事：
+
+1. 先告诉编译器：后面会有一个叫 `struct RenderContext` 的结构体类型
+2. 再给这个类型起一个简写别名 `RenderContext`
+
+等价理解：
+
+```c
+struct RenderContext;
+typedef struct RenderContext RenderContext;
+```
+
+这样以后就可以写：
+
+```c
+RenderContext* ctx;
+```
+
+而不用每次都写：
+
+```c
+struct RenderContext* ctx;
+```
+
+#### 为什么头文件里只声明，不定义？
+
+因为这是典型的**不透明结构体（opaque type）**写法。
+
+头文件里只暴露：
+
+```c
+typedef struct RenderContext RenderContext;
+```
+
+真正的结构体内容放到 `render.c` 里：
+
+```c
+struct RenderContext {
+    HWND hwnd;
+    ID2D1Factory* d2d_factory;
+    ID2D1HwndRenderTarget* render_target;
+    IDWriteFactory* dwrite_factory;
+};
+```
+
+这样做的目的，是把 render 模块内部细节藏起来，不让 `app/`、`ui/` 直接访问。
+
+#### 这种写法的好处
+
+| 好处 | 说明 |
+|------|------|
+| 隐藏实现细节 | 外部模块不知道 render 内部到底有哪些 Direct 资源 |
+| 保护边界 | 外部不能直接写 `ctx->xxx` 去改 render 内部状态 |
+| 方便以后重构 | 后面即使调整 `RenderContext` 内部字段，外部代码也不用跟着改 |
+
+#### 只有前置声明时，能做什么？
+
+可以：
+
+```c
+RenderContext* ctx;
+void Foo(RenderContext* ctx);
+```
+
+不可以：
+
+```c
+RenderContext ctx;      // 不知道结构体大小
+sizeof(RenderContext);  // 编译器不知道大小
+ctx.some_field = 1;     // 不知道字段
+```
+
+原因是：前置声明只让编译器知道“有这个类型”，但**还不知道它内部长什么样**。
+
+#### 为什么这适合 `render`
+
+`render` 是一个应该严格保护边界的模块：
+
+- `app/` 只需要知道“有一个渲染上下文”
+- `ui/` 只需要把它传给 render 接口
+- 只有 `render.c` 自己才需要知道里面有哪些 Direct2D / DirectWrite 对象
+
+所以：
+
+> `typedef struct RenderContext RenderContext;`
+>
+> 是一种“只公开名字，不公开内部实现”的模块封装手法。
 
 ---
 

@@ -1,0 +1,274 @@
+#include "state_store.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <wchar.h>
+
+#define STATE_STORE_VERSION 1
+#define STATE_STORE_ROOT_NAME L"DeskNote"
+#define STATE_STORE_FILE_NAME L"state.ini"
+
+static int StateStore_CopyString(wchar_t* buffer, int buffer_count, const wchar_t* text)
+{
+    size_t length;
+
+    if (buffer == NULL || buffer_count <= 0 || text == NULL)
+        return 1;
+
+    length = wcslen(text);
+    if ((int)length >= buffer_count)
+        return 1;
+
+    memcpy(buffer, text, (length + 1) * sizeof(wchar_t));
+    return 0;
+}
+
+static int StateStore_CombinePath(wchar_t* buffer,
+                                  int buffer_count,
+                                  const wchar_t* left,
+                                  const wchar_t* right)
+{
+    size_t left_length;
+    size_t right_length;
+
+    if (buffer == NULL || buffer_count <= 0 || left == NULL || right == NULL)
+        return 1;
+
+    left_length = wcslen(left);
+    right_length = wcslen(right);
+    if ((int)(left_length + 1 + right_length) >= buffer_count)
+        return 1;
+
+    memcpy(buffer, left, left_length * sizeof(wchar_t));
+    buffer[left_length] = L'\\';
+    memcpy(buffer + left_length + 1, right, (right_length + 1) * sizeof(wchar_t));
+    return 0;
+}
+
+static int StateStore_EnsureDirectoryExists(const wchar_t* path)
+{
+    DWORD attributes;
+
+    if (path == NULL || path[0] == L'\0')
+        return 1;
+
+    attributes = GetFileAttributesW(path);
+    if (attributes == INVALID_FILE_ATTRIBUTES)
+    {
+        if (!CreateDirectoryW(path, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+            return 1;
+        return 0;
+    }
+
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY) ? 0 : 1;
+}
+
+static void StateStore_TrimLineEndings(wchar_t* text)
+{
+    size_t length;
+
+    if (text == NULL)
+        return;
+
+    length = wcslen(text);
+    while (length > 0 && (text[length - 1] == L'\r' || text[length - 1] == L'\n'))
+    {
+        text[length - 1] = L'\0';
+        length -= 1;
+    }
+}
+
+int StateStore_GetRootPath(wchar_t* buffer, int buffer_count)
+{
+    wchar_t local_app_data[MAX_PATH];
+    DWORD length;
+
+    if (buffer == NULL || buffer_count <= 0)
+        return 1;
+
+    length = GetEnvironmentVariableW(L"LOCALAPPDATA", local_app_data, MAX_PATH);
+    if (length == 0 || length >= MAX_PATH)
+        return 1;
+
+    return StateStore_CombinePath(buffer, buffer_count, local_app_data, STATE_STORE_ROOT_NAME);
+}
+
+int StateStore_GetStatePath(wchar_t* buffer, int buffer_count)
+{
+    wchar_t root_path[MAX_PATH];
+
+    if (StateStore_GetRootPath(root_path, MAX_PATH) != 0)
+        return 1;
+
+    return StateStore_CombinePath(buffer, buffer_count, root_path, STATE_STORE_FILE_NAME);
+}
+
+int StateStore_Load(StateData* out_state)
+{
+    HANDLE file_handle;
+    wchar_t state_path[MAX_PATH];
+    wchar_t* file_text;
+    wchar_t* parse_cursor;
+    DWORD bytes_read;
+    DWORD file_size;
+
+    if (out_state == NULL)
+        return 1;
+
+    memset(out_state, 0, sizeof(*out_state));
+    out_state->version = STATE_STORE_VERSION;
+
+    if (StateStore_GetStatePath(state_path, MAX_PATH) != 0)
+        return 1;
+
+    file_handle = CreateFileW(state_path,
+                              GENERIC_READ,
+                              FILE_SHARE_READ,
+                              NULL,
+                              OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL,
+                              NULL);
+    if (file_handle == INVALID_HANDLE_VALUE)
+    {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND)
+            return 0;
+        return 1;
+    }
+
+    file_size = GetFileSize(file_handle, NULL);
+    if (file_size == INVALID_FILE_SIZE)
+    {
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    if (file_size == 0)
+    {
+        CloseHandle(file_handle);
+        return 0;
+    }
+
+    if ((file_size % sizeof(wchar_t)) != 0)
+    {
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    file_text = (wchar_t*)malloc((size_t)file_size + sizeof(wchar_t));
+    if (file_text == NULL)
+    {
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    bytes_read = 0;
+    if (!ReadFile(file_handle, file_text, file_size, &bytes_read, NULL) || bytes_read != file_size)
+    {
+        free(file_text);
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    CloseHandle(file_handle);
+    file_text[file_size / sizeof(wchar_t)] = L'\0';
+    parse_cursor = file_text;
+    if (parse_cursor[0] == 0xFEFF)
+        parse_cursor += 1;
+
+    while (*parse_cursor != L'\0')
+    {
+        wchar_t* line_start;
+        wchar_t* line_end;
+
+        line_start = parse_cursor;
+        while (*parse_cursor != L'\0' && *parse_cursor != L'\n')
+            parse_cursor += 1;
+
+        line_end = parse_cursor;
+        if (*parse_cursor == L'\n')
+        {
+            *parse_cursor = L'\0';
+            parse_cursor += 1;
+        }
+
+        StateStore_TrimLineEndings(line_start);
+        if (wcsncmp(line_start, L"version=", 8) == 0)
+        {
+            out_state->version = _wtoi(line_start + 8);
+        }
+        else if (wcsncmp(line_start, L"last_file=", 10) == 0)
+        {
+            if (line_start[10] != L'\0' &&
+                StateStore_CopyString(out_state->last_file, MAX_PATH, line_start + 10) == 0)
+            {
+                out_state->has_last_file = 1;
+            }
+        }
+
+        if (line_end == parse_cursor)
+            break;
+    }
+
+    free(file_text);
+    return 0;
+}
+
+int StateStore_Save(const StateData* state)
+{
+    HANDLE file_handle;
+    wchar_t root_path[MAX_PATH];
+    wchar_t state_path[MAX_PATH];
+    wchar_t file_text[MAX_PATH + 64];
+    DWORD bytes_to_write;
+    DWORD bytes_written;
+    int written_characters;
+    static const unsigned char utf16le_bom[] = { 0xFF, 0xFE };
+
+    if (state == NULL)
+        return 1;
+
+    if (StateStore_GetRootPath(root_path, MAX_PATH) != 0)
+        return 1;
+    if (StateStore_GetStatePath(state_path, MAX_PATH) != 0)
+        return 1;
+    if (StateStore_EnsureDirectoryExists(root_path) != 0)
+        return 1;
+
+    written_characters = swprintf(file_text,
+                                  sizeof(file_text) / sizeof(file_text[0]),
+                                  L"version=%d\r\nlast_file=%ls\r\n",
+                                  STATE_STORE_VERSION,
+                                  state->has_last_file ? state->last_file : L"");
+    if (written_characters < 0)
+        return 1;
+
+    file_handle = CreateFileW(state_path,
+                              GENERIC_WRITE,
+                              0,
+                              NULL,
+                              CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL,
+                              NULL);
+    if (file_handle == INVALID_HANDLE_VALUE)
+        return 1;
+
+    bytes_written = 0;
+    if (!WriteFile(file_handle, utf16le_bom, sizeof(utf16le_bom), &bytes_written, NULL) ||
+        bytes_written != sizeof(utf16le_bom))
+    {
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    bytes_to_write = (DWORD)(wcslen(file_text) * sizeof(wchar_t));
+    if (!WriteFile(file_handle, file_text, bytes_to_write, &bytes_written, NULL) ||
+        bytes_written != bytes_to_write)
+    {
+        CloseHandle(file_handle);
+        return 1;
+    }
+
+    CloseHandle(file_handle);
+    return 0;
+}

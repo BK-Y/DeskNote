@@ -1,12 +1,17 @@
 # DeskNote 架构设计文档
 
-本文档分两部分：
-1. **当前架构**（v0.1.0）—— 实际已实现的代码结构
-2. **目标架构**（远期）—— 模块化设计方向
+> **学习项目说明：** 本项目同时也是 C 语言和 Win32 API 的学习计划。
+> 没有明确的截止日期或硬性需求，每个阶段按自己的节奏推进。
+> 文档中列出的估时和阶段顺序只是参考方向，不是承诺。
+
+本文档分三部分：
+1. **遗留实现**（v0.1.0 之前）—— 旧版 Win32 + GDI 代码结构
+2. **当前重构约定**（v0.1.x）—— 当前正在落地的模块边界与技术决策
+3. **远期目标架构** —— 后续持续演进方向
 
 ---
 
-## 第一部分：当前架构（v0.1.0）
+## 第一部分：遗留实现（v0.1.0 之前）
 
 ### 技术栈
 
@@ -107,7 +112,173 @@
 
 ---
 
-## 第二部分：目标架构（远期）
+## 第二部分：当前重构约定（v0.1.x）
+
+### 当前重构阶段的边界约定（MVP 优先）
+
+> 下面这组边界用于指导**当前这一轮重构**，目标不是一步到位实现远期理想架构，
+> 而是先稳定落地 `v0.1`：**单窗口、单便签、能输入、能保存、重启能恢复**。
+
+#### 当前目录语义
+
+为减少术语混乱，当前重构阶段统一采用下面的目录含义：
+
+- `app/`：组装层
+- `platform/`：平台适配层
+- `render/`：渲染层
+- `ui/`：界面组件层
+- `editor/`：编辑核心
+- `core/`：纯数据与语义
+- `storage/`：持久化
+
+> 文档中旧的 `view/` 概念，在当前阶段统一折叠为 `ui/`；
+> 后续文档统一使用 `ui/` 表达界面组件层。
+
+#### 当前渲染技术决策（重要）
+
+当前重构阶段已经明确：
+
+1. **Windows 渲染后端直接采用 `Direct2D + DirectWrite`**
+2. **不再新增 GDI 作为新的过渡渲染路径**
+3. `render/` 从第一版开始就按“有生命周期的渲染层”设计
+
+因此当前的 `render/` 含义是：
+
+- 当前阶段：基础渲染后端（帧生命周期、矩形、文字、基础样式）
+- 后续阶段：逐步承载文本测量、裁剪、样式绘制、局部重绘等渲染能力
+
+但它仍然**不负责**：
+
+- Markdown 语义判断
+- 编辑命令和光标移动规则
+- 标题栏 / 编辑区 / 状态栏等具体组件业务
+
+一句话约定：
+
+> `ui` 决定画什么，`render` 负责基于 Direct2D / DirectWrite 把它画出来。
+
+#### 一句话职责
+
+| 层 | 回答的问题 | 应该负责 | 不应该负责 |
+|------|------|------|------|
+| `app/` | 程序怎么接起来 | 初始化、依赖注入、生命周期、事件分发 | 具体绘制、具体编辑规则、具体存储细节 |
+| `platform/` | 操作系统发生了什么 | Win32 窗口、消息循环、输入消息、定时器、系统 API | 文档模型、编辑命令、Markdown 语义 |
+| `render/` | 东西怎么画出来 | Direct2D/DirectWrite 生命周期、render target、画刷、字体、文本与图元绘制 | 知道什么是标题栏、光标、标签、TODO |
+| `ui/` | 界面应该显示什么 | 标题栏、编辑区、状态栏、布局、hover/focus、命中区域 | 底层文本编辑规则、磁盘读写 |
+| `editor/` | 文档怎么变化 | 插入删除、光标、选区、键盘命令、撤销重做 | 直接调用 Win32、直接操作 D2D |
+| `core/` | 数据是什么 | `Document`、Markdown 语义、标签/TODO 数据结构 | 平台 API、窗口、绘图后端 |
+| `storage/` | 状态怎么进出磁盘 | note load/save、settings、启动恢复、原子写入 | 组件绘制、窗口消息、输入派发 |
+
+#### Editor 与 UI / Render 的边界
+
+编辑器在概念上分为两半：
+
+1. **Editor Core（`editor/`）**：维护文本、光标、选区、编辑命令
+2. **Editor View（`ui/editor_view.*`）**：把编辑器状态翻译成可显示的界面
+
+因此三者分工固定为：
+
+```text
+editor/      -> 维护“内容变成什么样”
+ui/          -> 决定“内容显示成什么样”
+render/      -> 负责“具体怎么画出来”
+```
+
+如果一段代码同时包含：
+
+- Win32 消息处理
+- 文本插入/删除规则
+- Direct2D 绘图调用
+- 文件保存逻辑
+
+说明它已经跨越了多个边界，应继续拆分。
+
+#### 依赖规则（当前阶段）
+
+```text
+app
+ ├── platform
+ ├── render
+ ├── ui
+ ├── editor
+ ├── core
+ └── storage
+
+ui      -> 可依赖 render、editor、core
+editor  -> 可依赖 core
+storage -> 可依赖 core
+render  -> 不依赖 ui/editor/core 的业务概念
+platform-> 不依赖 editor/core/storage 的业务实现
+core    -> 不依赖任何平台与渲染层
+```
+
+补充约束：
+
+1. `core/` 不 `#include <windows.h>`
+2. `render/` 不出现 `titlebar`、`cursor`、`selection`、`tag` 这类业务名词
+3. `storage/` 不持有窗口句柄，不直接操作 UI
+4. `platform/` 只把系统事件翻译出来，不直接修改 `Document`
+5. `app/` 只做组装与调度，不堆积具体业务逻辑
+
+#### 当前推荐事件流
+
+```text
+Win32 消息
+-> platform/ 翻译成统一事件
+-> app/ 分发
+-> editor/ 修改 Document
+-> core/ 提供语义数据
+-> ui/ 组织界面
+-> render/ 绘制到屏幕
+-> storage/ 在合适时机持久化
+```
+
+这条链路是当前重构阶段的主干。只要主链保持单向，后续替换渲染器、补 Markdown 渲染、接入更复杂的存储方案时，就不容易互相污染。
+
+#### 后续保存能力的职责归属
+
+随着 `v0.1.x` 往后推进，保存相关能力会继续增强，但职责边界保持不变。
+
+| 能力 | 主要归属 | 辅助归属 | 不应放入 |
+|------|------|------|------|
+| dirty / 脏标记 | `editor/` 或 `app/` | `core/`（如后续文档状态需要下沉） | `platform/` `ui/` `render/` |
+| autosave / 自动保存 | `app/` | `storage/` | `platform/` `ui/` |
+| atomic save / 原子保存 | `storage/` | `app/`（只负责触发） | `editor/` `ui/` |
+| crash recovery / 崩溃恢复 | `storage/` + `app/` | `editor/`（仅装载文本） | `platform/` `render/` |
+| multi-file / 多文件切换保存策略 | `app/` + `storage/` | `editor/` | `platform/` `render/` |
+
+补充说明：
+
+1. **dirty / 脏标记**
+   - 本质是“文档是否自上次成功保存后又发生过修改”
+   - 可以由 `editor/` 在编辑操作后更新，或由 `app/` 在编辑结果返回后维护
+   - 但它不应变成 Win32 窗口层状态，也不应进入 `render/`
+
+2. **autosave / 自动保存**
+   - `app/` 决定何时保存，例如空闲一段时间后保存
+   - `storage/` 负责真正写盘
+   - `platform/` 只提供定时器或时间事件，不直接实现保存策略
+
+3. **atomic save / 原子保存**
+   - 这是纯存储层问题：先写临时文件，再替换正式文件
+   - `app/` 只知道“调用一次保存”
+   - `editor/` 不应知道临时文件名、替换顺序等细节
+
+4. **crash recovery / 崩溃恢复**
+   - `storage/` 负责恢复文件的读写
+   - `app/` 负责决定启动时是否加载恢复内容
+   - `editor/` 只负责装载恢复出的文本
+
+5. **multi-file / 多文件切换保存策略**
+   - `app/` 负责“当前文件是谁、切换前要不要保存”
+   - `storage/` 负责“这个文件怎么安全写入和读取”
+   - `editor/` 仍然只关心“当前装进来的文档是什么”
+
+一句话约定：
+
+> `editor` 负责知道“内容是否变了”，`app` 负责知道“什么时候该保存”，`storage` 负责知道“如何安全保存与恢复”。
+
+## 第三部分：远期目标架构
 
 ### 整体分层
 
@@ -118,7 +289,7 @@
 ├──────────────────────────────────────────────────┤
 │                                                    │
 │    ┌─────────────┐     ┌────────────────────┐     │
-│    │   view/     │     │     editor/         │     │
+│    │    ui/      │     │     editor/         │     │
 │    │  UI 组件树  │────▶│   编辑引擎          │     │
 │    │             │     │                     │     │
 │    │ titlebar    │     │ 光标 · 选区 · 滚动  │     │
@@ -136,59 +307,50 @@
 │                                                    │
 │    ┌──────────────────────────────────────┐        │
 │    │            platform/                 │        │
-│    │     各平台实现各一份，CMake 链接期选择 │        │
-│    │                                      │        │
-│    │ render.h   window.h   timer.h   file.h│       │
-│    │ render_win32.c  render_linux.c       │        │
-│    │ window_win32.c   window_linux.c      │        │
+│    │   Win32 入口 / 窗口 / 定时器 / 系统   │        │
+│    └──────────────────────────────────────┘        │
+│    ┌──────────────────────────────────────┐        │
+│    │             render/                  │        │
+│    │  Direct2D + DirectWrite 渲染能力层    │        │
 │    └──────────────────────────────────────┘        │
 │                                                    │
 └────────────────────────────────────────────────────┘
 
-依赖方向：app → view/editor → core（从左到右依赖）
-                         ↓
-            platform/ 被 app 和 view 通过抽象接口调用
+依赖方向：
+    app → ui/editor → core
+    app → platform
+    ui  → render
+    render 在当前阶段直接封装 Windows Direct 技术
 ```
 
 ### 模块间依赖关系
 
 ```
-                    ┌──────────┐
-                    │  app.c   │
-                    └────┬─────┘
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-         ┌────────┐ ┌────────┐ ┌─────────────┐
-         │ view/  │ │editor/ │ │ platform/   │
-         │        │ │        │ │ 统一头文件   │
-         │组件树   │ │编辑引擎│ │ (.h 声明)   │
-         └───┬────┘ └───┬────┘ └──────┬──────┘
-             │          │             │
-             │          ▼             │
-             │    ┌──────────┐        │
-             └───▶│ core/    │        │
-                  │          │        │
-                  │纯 C 逻辑 │        │
-                  └──────────┘        │
-                                      │
-           ┌──────────────────────────┘
-           ▼
-     ┌─────────────────────┐
-     │ platform/*_win32.c  │
-     │ platform/*_linux.c  │
-     │ 各平台具体实现       │
-     │ (app 初始化时调用，  │
-     │ view 通过 render.h  │
-     │ 抽象接口间接使用)    │
-     └─────────────────────┘
+                   ┌──────────┐
+                   │  app.c   │
+                   └────┬─────┘
+                        │
+              ┌──────────┼───────────────┬──────────┐
+              ▼          ▼               ▼          ▼
+           ┌──────┐  ┌────────┐      ┌────────┐  ┌──────────┐
+           │ ui/  │  │editor/ │      │render/ │  │platform/ │
+           │组件树 │  │编辑引擎│      │渲染层   │  │Win32 适配 │
+           └──┬───┘  └───┬────┘      └────────┘  └──────────┘
+              │          │
+              ├──────────┘
+              ▼
+         ┌──────────┐
+         │ core/    │
+         │ 纯 C 逻辑 │
+         └──────────┘
 
 
 依赖规则：
-    view/   → 知道 core/ 和 editor/ 存在
-    view/   → 不知道 platform/*.c 存在（只通过抽象接口 render.h 画图）
+    ui/     → 知道 core/、editor/、render/ 存在
     editor/ → 知道 core/ 存在
-    editor/ → 不知道 view/ 和 platform/ 存在
+    editor/ → 不知道 ui/、render/ 和 platform/ 存在
+    render/ → 不知道 editor/、core/ 的业务语义
+    platform/ → 不知道 editor/、core/、storage/ 的业务实现
     core/   → 不知道任何其他模块存在（纯 C 标准库）
     app.c   → 知道所有模块存在（组装器）
 ```
@@ -218,12 +380,13 @@
 | 键盘映射 | 键码 → 命令转换 |
 | 撤消 | 操作栈、回退/重做 |
 
-#### view/ — UI 组件树，只通过抽象接口画图
+#### ui/ — UI 组件树，组织界面显示逻辑
 
-不 include 平台头文件，不直接调 Direct2D 或 Cairo，只通过 `platform/render.h` 定义的抽象接口绘制。
+可以知道 `render/` 存在，但不直接管理 Direct2D / DirectWrite 生命周期；
+它负责决定“当前该显示什么”，再调用 `render/` 提供的基础绘制能力。
 
 ```
-View 树挂载关系：
+UI 树挂载关系：
 
 root_view
 ├── titlebar_view          (0, 0, W, 30)
@@ -233,39 +396,64 @@ root_view
 └── editor_view            (0, 30, W, H-30)
 ```
 
-每个 View 只画自己的矩形区域，只处理自己区域内的鼠标事件。新增 UI 组件只需在 view/ 下加新文件，挂到树上。
+每个 UI 组件只画自己的矩形区域，只处理自己区域内的鼠标事件。新增组件只需在 `ui/` 下加新文件，挂到树上。
 
-#### platform/ — 各平台实现各一份
+#### platform/ — 平台适配层
 
-统一头文件（`.h`）放在 `platform/`，各平台的具体 `.c` 通过 CMake 链接期选择编译哪份。
+当前阶段的 `platform/` 只先服务 Windows：
 
+```text
+platform/win32/entry.c   -> WinMain 入口
+platform/win32/window.c  -> 窗口类注册、创建、消息循环、WndProc
+
+后续再逐步扩展：
+platform/win32/timer.c
+platform/win32/dock.c
+platform/linux/*
 ```
-统一声明（不包含任何平台代码）              Windows 实现              Linux 实现
-───────────────                      ─────────────           ───────────
-platform/render.h                   platform/render_win32.c  platform/render_linux.c
-platform/window.h                   platform/window_win32.c  platform/window_linux.c
-platform/timer.h                    platform/timer_win32.c   platform/timer_linux.c
-platform/file.h                     platform/file_win32.c    platform/file_linux.c
-```
 
-调用方只 include `.h`，不 include 具体的平台 `.c`。运行时就是一条 call 指令，没有 if、没有函数指针、没有虚表。
+平台层只处理“操作系统发生了什么”，不承担界面业务和编辑规则。
+
+#### render/ — Direct2D + DirectWrite 渲染层
+
+`render/` 当前直接依赖 Windows Direct 技术，但仍作为独立模块存在，原因是：
+
+1. 把绘制资源生命周期从 `WndProc` 里拿出来
+2. 让 `ui/` 不直接操作底层 COM 对象
+3. 为后续文本测量、裁剪、富文本样式绘制保留统一入口
+
+当前阶段 `render/` 至少负责：
+
+- 初始化 / 释放渲染资源
+- resize 后重建或调整 render target
+- begin frame / end frame
+- clear / fill rect / draw text
+
+#### storage/ — 持久化层
+
+当前阶段暂不接入显示链，但仍保留为独立层，用于后续：
+
+- settings
+- note load/save
+- 上次文件恢复
+- 原子写入
 
 #### app.c — 组装器
 
-唯一知道所有模块存在的文件，负责启动时初始化各层，收消息后分发给 view 树。
+唯一知道所有模块存在的文件，负责启动时初始化各层，收消息后分发给 `ui/`。
 
 ```
 行为：
-    Window_Create → Render_Init → Editor_Init → View_Init → Window_Loop
+    Window_Create → Render_Init → Editor_Init → UI_Init → Window_Loop
 
 消息分发：
     消息循环在 platform/window_*.c 内部
     → 翻译成统一 Event 结构体 → 调 app.c 注册的回调
-    → App_OnEvent(Event*) → View_Dispatch 丢给组件树
-    → 命中检测找到对应 View
+    → App_OnEvent(Event*) → UI_Dispatch 丢给组件树
+    → 命中检测找到对应组件
 ```
 
-### 消息流
+### 当前主消息流
 
 ```
 用户操作
@@ -277,23 +465,23 @@ platform/window（消息循环 GetMessage → DispatchMessage）
 platform/window_win32.c: WndProc 翻译成统一 Event 结构体
     │ Event{type, x, y, key, ...}
     ▼
-app.c: App_OnEvent(Event*) → 全部丢给 view/ 组件树
+app.c: App_OnEvent(Event*) → 全部丢给 ui/ 组件树
     │
     ▼
-view/ 组件树命中检测 → 找鼠标位置落在哪个 View 上
+ui/ 组件树命中检测 → 找鼠标位置落在哪个组件上
     │
     ├── 按钮 → 触发 Command → core/ 执行 → 重绘
     ├── 编辑器点击 → editor/ 定位光标 → 重绘
     └── 标题栏操作 → 切换置顶/隐藏 → 重绘
     │
     ▼
-core/ 处理完毕 → Document/AST 变更
+editor/core 处理完毕 → Document/AST 变更
     │
     ▼
-view/ 遍历 View 树 → View.Draw(RenderContext)
+ui/ 遍历组件树 → EditorView_Draw / Titlebar_Draw
     │
     ▼
-platform/render_*（Direct2D / Cairo 绘制到屏幕）
+render/（Direct2D / DirectWrite 绘制到屏幕）
 ```
 
 ---
@@ -465,62 +653,51 @@ notes/
 
 ---
 
-### 现有代码迁移路径
+### 当前重构迁移路径
 
 ```
 当前文件                    迁移到
 ──────────────────────────────────────────────────
 src/main.c                → split:
-                              src/app.c（组装）
-                              src/platform/window_win32.c（窗口循环）
+                              src/app/app.c（组装）
+                              src/platform/win32/entry.c（WinMain）
+                              src/platform/win32/window.c（窗口循环）
 
-src/storage.c / .h        → src/core/storage.c / .h
-                            （纯逻辑，挪过去就行）
+src/storage.c / .h        → src/storage/settings.c / .h
+                            src/storage/note_store.c / .h
 
-src/notefile.c / .h       → src/core/notefile.c / .h
-                            （纯逻辑，挪过去就行）
+src/notefile.c / .h       → src/storage/note_store.c / .h
+                            （按职责拆到持久化层）
 
 src/md_parser.c / .h      → src/core/md_parser.c / .h
                             （纯逻辑，挪过去就行）
 
-src/ui/titlebar.c / .h    → src/view/titlebar_view.c / .h
-                            （改为 View 组件，画图走 render.h 抽象接口）
+src/ui/titlebar.c / .h    → src/ui/titlebar.c / .h
+                            （保留为 UI 组件，改用 render/ 绘制）
 
-src/ui/window.c / .h      → 看情况保留或并入 view/
+src/ui/window.c / .h      → src/platform/win32/window.c
+                            或拆分为平台行为 + UI 行为
 
 lib/widget.h / widget.c   → ❌ 废弃（随 GDI 一起移除）
 
-src/render.c / .h（待创建）→ src/platform/render.h（统一声明）
-                             src/platform/render_win32.c（D2D 实现）
+src/render.c / .h（待创建）→ src/render/render.c / .h
+                             （Direct2D / DirectWrite 实现）
 
 src/editor.c / .h（待创建）→ src/editor/editor.c / .h
                              src/core/parser.c / .h（增量 AST 引擎）
 ```
 
-### 跨平台隔离边界
+### 当前跨平台策略
 
-```
-                     ┌──────────────────────────┐
-                     │  跨平台可编译的模块       │
-                     │                          │
-                     │  core/  纯 C，零平台依赖  │
-                     │  editor/ 不 include 平台  │
-                     │  view/   只依赖抽象接口    │
-                     │  platform/*.h 纯声明      │
-                     └──────────────────────────┘
-                                    │
-                        链接期 CMake 选择
-                                    │
-                     ┌──────────────┴──────────────┐
-                     ▼                              ▼
-         ┌────────────────────┐        ┌────────────────────┐
-         │ Windows 平台实现    │        │ Linux 平台实现      │
-         │ window_win32.c     │        │ window_linux.c     │
-         │ render_win32.c     │        │ render_linux.c     │
-         │ (Direct2D)         │        │ (Cairo/X11)        │
-         │ timer_win32.c      │        │ timer_linux.c      │
-         │ file_win32.c       │        │ file_linux.c       │
-         └────────────────────┘        └────────────────────┘
+当前阶段只落地 Windows 版本，跨平台不是正在进行的实现目标。
+
+约束如下：
+
+1. `core/` 保持纯 C，避免引入平台耦合
+2. `editor/` 不依赖平台 API
+3. `ui/` 不直接管理 Direct2D / DirectWrite 对象
+4. `render/` 当前允许直接依赖 Windows Direct 技术
+5. Linux / macOS 适配延后到 Windows 主链稳定之后
 
 ### 功能模块：桌面停靠栏（AppBar / _NET_WM_STRUT）
 
@@ -547,9 +724,9 @@ src/editor.c / .h（待创建）→ src/editor/editor.c / .h
     │   ├── 窗口全屏/分屏布局自动腾出空间
     │   └── 系统停靠栏变化时收到通知自动重对齐
     │
-    │   core/storage: 保存停靠偏好到 settings.json
-    │   view/titlebar_view: 停靠模式下隐藏 resize / 隐藏按钮
-    │   view/: 停靠期间固定宽度/高度
+    │   storage/: 保存停靠偏好到 settings.json
+    │   ui/titlebar: 停靠模式下隐藏 resize / 隐藏按钮
+    │   ui/: 停靠期间固定宽度/高度
     │
     └── 取消停靠
             │
@@ -567,15 +744,15 @@ src/editor.c / .h（待创建）→ src/editor/editor.c / .h
 
 | 模块 | 变更 |
 |------|------|
-| `platform/dock.h` | 新增 `Dock_Register` / `Dock_Unregister` / `Dock_GetWorkArea` 声明 |
+| `platform/win32/dock.h` | 新增 `Dock_Register` / `Dock_Unregister` / `Dock_GetWorkArea` 声明 |
 | `core/command.c` | 新增 `Cmd_ToggleDock` / `Cmd_SetDockEdge` |
-| `core/storage.c` | 新增 `dock_edge` / `dock_enabled` 配置项 |
-| `view/titlebar_view` | 停靠模式下禁用 resize 手柄 |
-| `view/` | 停靠模式下宽度/高度固定 |
+| `storage/settings.c` | 新增 `dock_edge` / `dock_enabled` 配置项 |
+| `ui/titlebar` | 停靠模式下禁用 resize 手柄 |
+| `ui/` | 停靠模式下宽度/高度固定 |
 
 #### 跨平台策略
 
-统一声明在 `platform/dock.h`，各平台 `.c` 链接期选择。macOS 暂为空实现。
+统一声明在 `platform/*/dock.h`，各平台 `.c` 链接期选择。macOS 暂为空实现。
 
 ```cmake
 if(WIN32)
@@ -592,7 +769,7 @@ endif()
 | 实现工作量 | ~10 行 | ~20 行 X11 属性 | — |
 ```
 
-### 目标文件结构（远期）
+### 目标文件结构（按当前重构方向整理）
 
 ```
 desknote/
@@ -600,32 +777,31 @@ desknote/
 ├── lib/
 │   └── md4c/
 ├── src/
-│   ├── app.c                      # 组装器：初始化 + 消息分发
+│   ├── app/
+│   │   ├── app.c                  # 组装器：初始化 + 消息分发
+│   │   └── app.h
 │   ├── core/                      # 纯 C 逻辑，零平台依赖
 │   │   ├── document.c / .h        # 文档模型（文本 + AST）
 │   │   ├── parser.c / .h          # 增量 AST 引擎
 │   │   ├── command.c / .h         # 命令定义
-│   │   ├── storage.c / .h         # 存储路径 & 配置
-│   │   ├── notefile.c / .h        # 便签文件读写
 │   │   └── md_parser.c / .h       # md4c 全量解析
 │   ├── editor/                    # 编辑引擎
 │   │   └── editor.c / .h          # 光标 · 选区 · 滚动 · 键盘映射
-│   ├── view/                      # UI 组件树
-│   │   ├── view.h                 # View 基类定义
-│   │   ├── titlebar_view.c / .h   # 标题栏组件
+│   ├── render/
+│   │   ├── render.c / .h          # Direct2D / DirectWrite 渲染层
+│   ├── storage/
+│   │   ├── settings.c / .h        # 配置读写
+│   │   └── note_store.c / .h      # 便签文件读写
+│   ├── ui/                        # UI 组件树
+│   │   ├── titlebar.c / .h        # 标题栏组件
 │   │   ├── editor_view.c / .h     # 编辑区组件
 │   │   └── status_view.c / .h     # 状态栏组件
-│   └── platform/                  # 各平台实现各一份
-│       ├── render.h               # 渲染统一声明
-│       ├── render_win32.c         # Direct2D 实现
-│       ├── window.h               # 窗口统一声明
-│       ├── window_win32.c         # Win32 窗口实现
-│       ├── timer.h                # 定时器统一声明
-│       ├── timer_win32.c          # Win32 定时器实现
-│       ├── file.h                 # 文件 I/O 统一声明
-│       ├── file_win32.c           # Win32 文件 I/O 实现
-│       ├── dock.h                 # 桌面停靠统一声明
-│       └── dock_win32.c           # Win32 AppBar 停靠实现
+│   └── platform/
+│       └── win32/
+│           ├── entry.c            # WinMain
+│           ├── window.c / .h      # Win32 窗口实现
+│           ├── timer.c / .h       # 定时器（后续）
+│           └── dock.c / .h        # AppBar 停靠（后续）
 ├── resources/
 └── docs/
 ```
@@ -634,8 +810,8 @@ desknote/
 
 | 阶段 | 做的事 | 产出 |
 |------|--------|------|
-| **A** | 创建 `platform/render.h` + `render_win32.c`，重构 titlebar 到 D2D | 渲染基础就绪 |
-| **B** | 创建 `editor/` + `view/editor_view`，实现文字显示 + 光标 + 键盘 | 能打字、能存盘 |
+| **A** | 创建 `render/render.h` + `render.c`，先跑通 `platform -> app -> ui -> render` | 显示链路就绪 |
+| **B** | 创建 `editor/` + `ui/editor_view`，实现文字显示 + 光标 + 键盘 | 能打字、能存盘 |
 | **C** | 创建 `core/parser.c` 增量 AST 引擎，接入 editor 渲染 | 实时 Markdown 标识 |
 | **D** | 右键菜单 → 停靠功能（SHAppBarMessage 注册） | 桌面停靠栏 |
 | **H** | 加 `platform/*_linux.c` | 跨平台就绪 |
@@ -647,8 +823,8 @@ desknote/
 | 决策 | 状态 | 说明 |
 |------|------|------|
 | ADR-0001 | ⏳ 待创建 | Journal + checkpoint 恢复策略 |
-| 渲染技术 | ✅ 确定 | Windows: Direct2D + DirectWrite；跨平台: 链接期选择策略 |
+| 渲染技术 | ✅ 确定 | Windows 当前直接使用 Direct2D + DirectWrite，不再新增 GDI 过渡路径 |
 | 平台抽象 | ✅ 确定 | 同一函数名各平台各一份 .c，CMake 链接期选择，零运行时开销 |
-| 编辑器方案 | ✅ 确定 | 基于 Direct2D 的单窗口 WYSIWYG，编辑器与渲染整合 |
-| 模块分层 | ✅ 确定 | app → view/editor → core → platform 单向依赖 |
+| 编辑器方案 | ✅ 确定 | 基于 Direct2D/DirectWrite 的单窗口 WYSIWYG，编辑器与渲染整合 |
+| 模块分层 | ✅ 确定 | app → ui/editor → core，app → platform，ui → render |
 | 桌面停靠 | ✅ 确定 | Windows AppBar / Linux _NET_WM_STRUT，与靠边隐藏独立 |
