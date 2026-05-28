@@ -2,7 +2,30 @@
 #define DESKNOTE_EDITOR_VIEW_H
 
 #include "../core/document.h"
+#include "../editor/editor.h"
 #include "../render/render.h"
+
+int EditorView_GetTextRect(int window_width, int window_height, RenderRect* out_rect);
+int EditorView_GetContentHeight(RenderContext* ctx,
+                                const Document* document,
+                                int window_width,
+                                int window_height,
+                                int* out_height);
+int EditorView_HitTestCursor(RenderContext* ctx,
+                             const Document* document,
+                             int window_width,
+                             int window_height,
+                             int vertical_scroll,
+                             int x,
+                             int y,
+                             int* out_cursor);
+int EditorView_GetCursorVisualPosition(RenderContext* ctx,
+                                       const Document* document,
+                                       int cursor,
+                                       int vertical_scroll,
+                                       int window_width,
+                                       int window_height,
+                                       EditorVisualPosition* out_position);
 
 /*
  * 绘制最小编辑区视图。
@@ -19,6 +42,7 @@
 void EditorView_Draw(RenderContext* ctx,
                      const Document* document,
                      int cursor,
+                     int vertical_scroll,
                      int window_width,
                      int window_height);
 
@@ -31,8 +55,14 @@ void EditorView_Draw(RenderContext* ctx,
 int EditorView_GetCaretRect(RenderContext* ctx,
                             const Document* document,
                             int cursor,
+                            int vertical_scroll,
                             int window_width,
                             int window_height,
                             RenderRect* out_rect);
+
+/* Notify the editor view that the client area has changed (x,y,width,height).
+ * Implementation should adjust any cached layout and trigger redraw as needed.
+ */
+void EditorView_OnClientAreaChanged(int x, int y, int width, int height);
 
 #endif

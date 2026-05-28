@@ -1,11 +1,12 @@
 #include "state_store.h"
+#include "storage_write.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 
-#define STATE_STORE_VERSION 1
+#define STATE_STORE_VERSION 2
 #define STATE_STORE_ROOT_NAME L"DeskNote"
 #define STATE_STORE_FILE_NAME L"state.ini"
 
@@ -118,6 +119,7 @@ int StateStore_Load(StateData* out_state)
 
     memset(out_state, 0, sizeof(*out_state));
     out_state->version = STATE_STORE_VERSION;
+    out_state->use_custom_chrome = 1;
 
     if (StateStore_GetStatePath(state_path, MAX_PATH) != 0)
         return 1;
@@ -205,6 +207,22 @@ int StateStore_Load(StateData* out_state)
                 out_state->has_last_file = 1;
             }
         }
+        else if (wcsncmp(line_start, L"use_custom_chrome=", 18) == 0)
+        {
+            out_state->use_custom_chrome = _wtoi(line_start + 18) != 0 ? 1 : 0;
+        }
+        else if (wcsncmp(line_start, L"titlebar_height=", 16) == 0)
+        {
+            out_state->titlebar_height = _wtoi(line_start + 16);
+        }
+        else if (wcsncmp(line_start, L"frame_visual_thickness=", 23) == 0)
+        {
+            out_state->frame_visual_thickness = _wtoi(line_start + 23);
+        }
+        else if (wcsncmp(line_start, L"shell_resident_mode=", 20) == 0)
+        {
+            out_state->shell_resident_mode = _wtoi(line_start + 20);
+        }
 
         if (line_end == parse_cursor)
             break;
@@ -216,14 +234,10 @@ int StateStore_Load(StateData* out_state)
 
 int StateStore_Save(const StateData* state)
 {
-    HANDLE file_handle;
     wchar_t root_path[MAX_PATH];
     wchar_t state_path[MAX_PATH];
-    wchar_t file_text[MAX_PATH + 64];
-    DWORD bytes_to_write;
-    DWORD bytes_written;
+    wchar_t file_text[MAX_PATH + 192];
     int written_characters;
-    static const unsigned char utf16le_bom[] = { 0xFF, 0xFE };
 
     if (state == NULL)
         return 1;
@@ -237,38 +251,20 @@ int StateStore_Save(const StateData* state)
 
     written_characters = swprintf(file_text,
                                   sizeof(file_text) / sizeof(file_text[0]),
-                                  L"version=%d\r\nlast_file=%ls\r\n",
+                                  L"version=%d\r\n"
+                                  L"last_file=%ls\r\n"
+                                  L"use_custom_chrome=%d\r\n"
+                                  L"titlebar_height=%d\r\n"
+                                  L"frame_visual_thickness=%d\r\n"
+                                  L"shell_resident_mode=%d\r\n",
                                   STATE_STORE_VERSION,
-                                  state->has_last_file ? state->last_file : L"");
+                                  state->has_last_file ? state->last_file : L"",
+                                  state->use_custom_chrome,
+                                  state->titlebar_height,
+                                  state->frame_visual_thickness,
+                                  state->shell_resident_mode);
     if (written_characters < 0)
         return 1;
 
-    file_handle = CreateFileW(state_path,
-                              GENERIC_WRITE,
-                              0,
-                              NULL,
-                              CREATE_ALWAYS,
-                              FILE_ATTRIBUTE_NORMAL,
-                              NULL);
-    if (file_handle == INVALID_HANDLE_VALUE)
-        return 1;
-
-    bytes_written = 0;
-    if (!WriteFile(file_handle, utf16le_bom, sizeof(utf16le_bom), &bytes_written, NULL) ||
-        bytes_written != sizeof(utf16le_bom))
-    {
-        CloseHandle(file_handle);
-        return 1;
-    }
-
-    bytes_to_write = (DWORD)(wcslen(file_text) * sizeof(wchar_t));
-    if (!WriteFile(file_handle, file_text, bytes_to_write, &bytes_written, NULL) ||
-        bytes_written != bytes_to_write)
-    {
-        CloseHandle(file_handle);
-        return 1;
-    }
-
-    CloseHandle(file_handle);
-    return 0;
+    return StorageWriteUtf16FileAtomic(state_path, file_text);
 }

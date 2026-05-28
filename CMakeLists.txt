@@ -21,11 +21,14 @@ set(SOURCES
     src/core/document.c
     src/editor/editor.c
     src/platform/win32/window.c
+    src/platform/win32/nonclient.c
     src/render/render.c
     src/storage/note_store.c
     src/storage/state_store.c
+    src/storage/storage_write.c
     src/ui/editor_view.c
- 
+    src/ui/titlebar.c
+    src/ui/button.c
     resources/desknote.rc
 )
 

@@ -7,6 +7,10 @@ typedef struct {
     int version;
     int has_last_file;
     wchar_t last_file[MAX_PATH];
+    int use_custom_chrome;
+    int titlebar_height;
+    int frame_visual_thickness;
+    int shell_resident_mode;
 } StateData;
 
 int StateStore_GetRootPath(wchar_t* buffer, int buffer_count);

@@ -4,6 +4,19 @@
 #include <windows.h>
 
 /*
+ * ── render 层 API 总览 ─────────────────────────────────────────────
+ * 生命周期: Create, Destroy, Init, Shutdown, Resize
+ * 帧控制:   BeginFrame, EndFrame
+ * 清屏:     Clear
+ * 矩形:     FillRect
+ * 裁剪:     PushClip, PopClip
+ * 文字绘制: DrawText (左对齐+顶对齐), DrawTextCentered (水平垂直居中)
+ * 文本测量: HitTestTextPosition, HitTestPoint, MeasureTextHeight
+ * ─────────────────────────────────────────────────────────────────
+ * 边界: render 层不知道 titlebar / button / cursor / selection 等业务概念
+ */
+
+/*
  * RGBA 颜色描述。
  *
  * render 层当前统一使用 8-bit 通道颜色，便于上层组件直接表达：
@@ -267,6 +280,8 @@ void Render_Clear(RenderContext* ctx, RenderColor color);
  * - 这个矩形在业务上代表什么，由 `ui/` 或其他上层模块定义
  */
 void Render_FillRect(RenderContext* ctx, RenderRect rect, RenderColor color);
+void Render_PushClip(RenderContext* ctx, RenderRect rect);
+void Render_PopClip(RenderContext* ctx);
 
 /*
  * 在指定矩形区域中绘制文本。
@@ -302,6 +317,20 @@ void Render_DrawText(RenderContext* ctx,
                      RenderColor color);
 
 /*
+ * 在指定矩形区域内绘制文本，水平垂直居中。
+ *
+ * 与 Render_DrawText 的区别在于对齐方式为
+ * DWRITE_TEXT_ALIGNMENT_CENTER + DWRITE_PARAGRAPH_ALIGNMENT_CENTER。
+ * 适用于按钮 label、标题文本等需要居中的场景。
+ *
+ * 调用方需确保 ctx 已处于 BeginFrame 与 EndFrame 之间。
+ */
+void Render_DrawTextCentered(RenderContext* ctx,
+                             const wchar_t* text,
+                             RenderRect rect,
+                             RenderColor color);
+
+/*
  * 命中文本中的某个逻辑位置，并返回对应像素坐标。
  *
  * 参数：
@@ -322,5 +351,17 @@ int Render_HitTestTextPosition(RenderContext* ctx,
                                RenderRect rect,
                                int text_position,
                                RenderTextPosition* out_position);
+int Render_HitTestPoint(RenderContext* ctx,
+                        const wchar_t* text,
+                        int text_length,
+                        RenderRect rect,
+                        int x,
+                        int y,
+                        int* out_text_position);
+int Render_MeasureTextHeight(RenderContext* ctx,
+                             const wchar_t* text,
+                             int text_length,
+                             RenderRect rect,
+                             int* out_height);
 
 #endif

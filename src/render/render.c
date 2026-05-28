@@ -24,6 +24,10 @@ struct RenderContext {
     int frame_active;
 };
 
+static const FLOAT Render_DefaultFontSize = 16.0f;
+static const FLOAT Render_DefaultLineSpacing = 20.0f;
+static const FLOAT Render_DefaultLineBaseline = 16.0f;
+
 typedef struct {
     const wchar_t* text;
     UINT32 length;
@@ -91,6 +95,21 @@ static D2D1_RECT_F Render_ToD2DRect(RenderRect rect)
     return d2d_rect;
 }
 
+static FLOAT Render_GetLayoutMaxHeight(int text_length, RenderRect rect)
+{
+    FLOAT min_height;
+    FLOAT estimated_height;
+
+    min_height = rect.height > 0 ? (FLOAT)rect.height : 1.0f;
+    estimated_height = (FLOAT)((text_length + 1) * Render_DefaultLineSpacing);
+    if (estimated_height < min_height)
+        estimated_height = min_height;
+    if (estimated_height > 1000000.0f)
+        estimated_height = 1000000.0f;
+
+    return estimated_height;
+}
+
 static IDWriteTextLayout* Render_CreateTextLayout(RenderContext* ctx,
                                                   const wchar_t* text,
                                                   UINT32 length,
@@ -106,7 +125,7 @@ static IDWriteTextLayout* Render_CreateTextLayout(RenderContext* ctx,
 
     text_layout = NULL;
     max_width = rect.width > 0 ? (FLOAT)rect.width : 1.0f;
-    max_height = rect.height > 0 ? (FLOAT)rect.height : 1.0f;
+    max_height = Render_GetLayoutMaxHeight((int)length, rect);
 
     hr = ctx->dwrite_factory->lpVtbl->CreateTextLayout(
         ctx->dwrite_factory,
@@ -128,11 +147,15 @@ static IDWriteTextLayout* Render_CreateTextLayout(RenderContext* ctx,
         return NULL;
     }
 
+    /*
+     * 首行顶部是否被裁切，取决于 uniform line spacing 下 baseline 是否给足。
+     * 这里把 baseline 提到与当前字体尺寸一致，避免首行字形上半部分被 clip。
+     */
     hr = text_layout->lpVtbl->SetLineSpacing(
         text_layout,
         DWRITE_LINE_SPACING_METHOD_UNIFORM,
-        20.0f,
-        12.0f);
+        Render_DefaultLineSpacing,
+        Render_DefaultLineBaseline);
     if (FAILED(hr))
     {
         Render_ReleaseUnknown((void**)&text_layout);
@@ -208,6 +231,37 @@ static void Render_FreePreparedText(RenderPreparedText* prepared)
 
     free(prepared->owned_text);
     prepared->owned_text = NULL;
+}
+
+static int Render_MapPreparedPositionToOriginal(const wchar_t* text,
+                                                UINT32 text_length,
+                                                UINT32 prepared_position)
+{
+    UINT32 i;
+    UINT32 mapped_position;
+
+    if (text == NULL)
+        return 0;
+
+    mapped_position = 0;
+    if (prepared_position == 0)
+        return 0;
+
+    for (i = 0; i < text_length; ++i)
+    {
+        if (prepared_position <= mapped_position)
+            return (int)i;
+
+        if (text[i] == L'\n')
+            mapped_position += 2;
+        else
+            mapped_position += 1;
+
+        if (prepared_position <= mapped_position)
+            return (int)(i + 1);
+    }
+
+    return (int)text_length;
 }
 
 /*
@@ -311,7 +365,7 @@ int Render_Init(RenderContext* ctx, HWND hwnd)
         DWRITE_FONT_WEIGHT_NORMAL,
         DWRITE_FONT_STYLE_NORMAL,
         DWRITE_FONT_STRETCH_NORMAL,
-        16.0f,
+        Render_DefaultFontSize,
         L"",
         &ctx->text_format);
     if (FAILED(hr))
@@ -473,6 +527,33 @@ void Render_FillRect(RenderContext* ctx, RenderRect rect, RenderColor color)
         (ID2D1Brush*)ctx->brush);
 }
 
+void Render_PushClip(RenderContext* ctx, RenderRect rect)
+{
+    ID2D1RenderTarget* base_target;
+    D2D1_RECT_F d2d_rect;
+
+    if (ctx == NULL || ctx->render_target == NULL)
+        return;
+
+    base_target = (ID2D1RenderTarget*)ctx->render_target;
+    d2d_rect = Render_ToD2DRect(rect);
+    base_target->lpVtbl->PushAxisAlignedClip(
+        base_target,
+        &d2d_rect,
+        D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+}
+
+void Render_PopClip(RenderContext* ctx)
+{
+    ID2D1RenderTarget* base_target;
+
+    if (ctx == NULL || ctx->render_target == NULL)
+        return;
+
+    base_target = (ID2D1RenderTarget*)ctx->render_target;
+    base_target->lpVtbl->PopAxisAlignedClip(base_target);
+}
+
 void Render_DrawText(RenderContext* ctx,
                      const wchar_t* text,
                      RenderRect rect,
@@ -500,6 +581,51 @@ void Render_DrawText(RenderContext* ctx,
         Render_FreePreparedText(&prepared);
         return;
     }
+    origin.x = (FLOAT)rect.x;
+    origin.y = (FLOAT)rect.y;
+
+    ctx->brush->lpVtbl->SetColor(ctx->brush, &d2d_color);
+    base_target->lpVtbl->DrawTextLayout(
+        base_target,
+        origin,
+        text_layout,
+        (ID2D1Brush*)ctx->brush,
+        D2D1_DRAW_TEXT_OPTIONS_NONE);
+    Render_ReleaseUnknown((void**)&text_layout);
+    Render_FreePreparedText(&prepared);
+}
+
+void Render_DrawTextCentered(RenderContext* ctx,
+                             const wchar_t* text,
+                             RenderRect rect,
+                             RenderColor color)
+{
+    ID2D1RenderTarget* base_target;
+    IDWriteTextLayout* text_layout;
+    RenderPreparedText prepared;
+    D2D1_COLOR_F d2d_color;
+    D2D1_POINT_2F origin;
+    UINT32 length;
+
+    if (ctx == NULL || ctx->render_target == NULL || ctx->brush == NULL ||
+        ctx->text_format == NULL || text == NULL)
+        return;
+
+    base_target = (ID2D1RenderTarget*)ctx->render_target;
+    d2d_color = Render_ToD2DColor(color);
+    length = (UINT32)wcslen(text);
+    if (Render_PrepareText(text, length, 0, &prepared) != 0)
+        return;
+    text_layout = Render_CreateTextLayout(ctx, prepared.text, prepared.length, rect);
+    if (text_layout == NULL)
+    {
+        Render_FreePreparedText(&prepared);
+        return;
+    }
+
+    text_layout->lpVtbl->SetTextAlignment(text_layout, DWRITE_TEXT_ALIGNMENT_CENTER);
+    text_layout->lpVtbl->SetParagraphAlignment(text_layout, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
     origin.x = (FLOAT)rect.x;
     origin.y = (FLOAT)rect.y;
 
@@ -568,6 +694,106 @@ int Render_HitTestTextPosition(RenderContext* ctx,
     out_position->x = rect.x + (int)x;
     out_position->y = rect.y + (int)y;
     out_position->height = metrics.height > 0.0f ? (int)metrics.height : 18;
+
+    Render_ReleaseUnknown((void**)&text_layout);
+    Render_FreePreparedText(&prepared);
+    return 0;
+}
+
+int Render_HitTestPoint(RenderContext* ctx,
+                        const wchar_t* text,
+                        int text_length,
+                        RenderRect rect,
+                        int x,
+                        int y,
+                        int* out_text_position)
+{
+    IDWriteTextLayout* text_layout;
+    RenderPreparedText prepared;
+    DWRITE_HIT_TEST_METRICS metrics;
+    BOOL is_trailing_hit;
+    BOOL is_inside;
+    HRESULT hr;
+    int mapped_position;
+
+    if (ctx == NULL || text == NULL || out_text_position == NULL)
+        return 1;
+    if (text_length < 0)
+        return 1;
+
+    if (Render_PrepareText(text, (UINT32)text_length, 0, &prepared) != 0)
+        return 1;
+    text_layout = Render_CreateTextLayout(ctx, prepared.text, prepared.length, rect);
+    if (text_layout == NULL)
+    {
+        Render_FreePreparedText(&prepared);
+        return 1;
+    }
+
+    memset(&metrics, 0, sizeof(metrics));
+    is_trailing_hit = FALSE;
+    is_inside = FALSE;
+    hr = text_layout->lpVtbl->HitTestPoint(
+        text_layout,
+        (FLOAT)(x - rect.x),
+        (FLOAT)(y - rect.y),
+        &is_trailing_hit,
+        &is_inside,
+        &metrics);
+    if (FAILED(hr))
+    {
+        Render_ReleaseUnknown((void**)&text_layout);
+        Render_FreePreparedText(&prepared);
+        return 1;
+    }
+
+    mapped_position = (int)metrics.textPosition;
+    if (is_trailing_hit)
+        mapped_position += 1;
+
+    *out_text_position = Render_MapPreparedPositionToOriginal(
+        text,
+        (UINT32)text_length,
+        (UINT32)mapped_position);
+
+    Render_ReleaseUnknown((void**)&text_layout);
+    Render_FreePreparedText(&prepared);
+    return 0;
+}
+
+int Render_MeasureTextHeight(RenderContext* ctx,
+                             const wchar_t* text,
+                             int text_length,
+                             RenderRect rect,
+                             int* out_height)
+{
+    IDWriteTextLayout* text_layout;
+    RenderPreparedText prepared;
+    DWRITE_TEXT_METRICS metrics;
+
+    if (ctx == NULL || text == NULL || out_height == NULL)
+        return 1;
+    if (text_length < 0)
+        return 1;
+
+    if (Render_PrepareText(text, (UINT32)text_length, 0, &prepared) != 0)
+        return 1;
+    text_layout = Render_CreateTextLayout(ctx, prepared.text, prepared.length, rect);
+    if (text_layout == NULL)
+    {
+        Render_FreePreparedText(&prepared);
+        return 1;
+    }
+
+    memset(&metrics, 0, sizeof(metrics));
+    if (FAILED(text_layout->lpVtbl->GetMetrics(text_layout, &metrics)))
+    {
+        Render_ReleaseUnknown((void**)&text_layout);
+        Render_FreePreparedText(&prepared);
+        return 1;
+    }
+
+    *out_height = metrics.height > 0.0f ? (int)(metrics.height + 0.999f) : 0;
 
     Render_ReleaseUnknown((void**)&text_layout);
     Render_FreePreparedText(&prepared);

@@ -6,6 +6,8 @@
 #include "../storage/note_store.h"
 #include "../storage/state_store.h"
 #include "../ui/editor_view.h"
+#include "../ui/titlebar.h"
+#include "../ui/button.h"
 #include <imm.h>
 #include <string.h>
 #include <wchar.h>
@@ -29,6 +31,7 @@ typedef struct {
     int save_in_progress;
     wchar_t current_file_path[MAX_PATH];
     AppShellState shell;
+    ButtonState menu_button_state;       /* 缓存菜单按钮 state，避免每次重绘时丢失 hover/pressed */
 } AppState;
 
 typedef struct {
@@ -147,8 +150,8 @@ static int App_GetShellCommandGroupInternal(AppShellCommand command, AppTitlebar
     switch (command)
     {
     case APP_SHELL_COMMAND_WINDOW_CLOSE:
-    case APP_SHELL_COMMAND_WINDOW_MINIMIZE:
     case APP_SHELL_COMMAND_WINDOW_RESTORE:
+    case APP_SHELL_COMMAND_SHOW_MENU:
         *out_group = APP_TITLEBAR_COMMAND_GROUP_WINDOW_CONTROLS;
         return 0;
 
@@ -785,6 +788,7 @@ int App_Init(HWND hwnd)
     g_app.pending_recovery_write = 0;
     g_app.save_in_progress = 0;
     g_app.current_file_path[0] = L'\0';
+    g_app.menu_button_state = BUTTON_STATE_NORMAL;
     App_InitShellStateDefaults();
 
     if (App_LoadInitialDocument() != 0)
@@ -873,6 +877,23 @@ void App_OnPaint(void)
         return;
 
     Render_Clear(g_app.render, (RenderColor){ 246, 246, 246, 255 });
+
+    /* 绘制标题栏和窗口边框 */
+    {
+        TitlebarLayout titlebar_layout;
+
+        titlebar_layout = Titlebar_CalculateLayout(
+            (int)width, (int)height,
+            g_app.shell.titlebar_height,
+            g_app.shell.frame_visual_thickness,
+            g_app.shell.titlebar_command_groups);
+
+        /* 应用缓存的 button state */
+        titlebar_layout.menu_button.state = g_app.menu_button_state;
+
+        Titlebar_Draw(g_app.render, &titlebar_layout);
+    }
+
     EditorView_Draw(g_app.render,
                     Editor_GetDocument(&g_app.editor),
                     Editor_GetCursor(&g_app.editor),
@@ -881,6 +902,34 @@ void App_OnPaint(void)
                     (int)height);
     (void)Render_EndFrame(g_app.render);
     App_UpdateInputCaret();
+}
+
+void App_OnMouseMove(int x, int y)
+{
+    unsigned int tmp_width, tmp_height;
+
+    if (g_app.hwnd == NULL || g_app.render == NULL)
+        return;
+
+    /* 更新缓存 state：按钮在窗口右上角 [width-46, width) */
+    if (App_GetClientSize(&tmp_width, &tmp_height) == 0) {
+        int btn_right = (int)tmp_width;
+        int btn_left  = (int)tmp_width - 46;
+        if (x >= btn_left && x < btn_right &&
+            y >= g_app.shell.frame_visual_thickness &&
+            y < g_app.shell.frame_visual_thickness + g_app.shell.titlebar_height)
+            g_app.menu_button_state = BUTTON_STATE_HOVER;
+        else
+            g_app.menu_button_state = BUTTON_STATE_NORMAL;
+    }
+
+    App_RequestRefresh();
+}
+
+void App_OnMouseLeave(void)
+{
+    g_app.menu_button_state = BUTTON_STATE_NORMAL;
+    App_RequestRefresh();
 }
 
 void App_OnChar(wchar_t ch)
@@ -951,6 +1000,8 @@ void App_OnLeftButtonDown(int x, int y)
 {
     unsigned int width;
     unsigned int height;
+    TitlebarLayout layout;
+    TitlebarHitResult hit;
     int cursor;
     EditorResult result;
 
@@ -958,6 +1009,25 @@ void App_OnLeftButtonDown(int x, int y)
         return;
     if (App_GetClientSize(&width, &height) != 0)
         return;
+
+    /* 1. Titlebar hit test: menu button or drag */
+    layout = Titlebar_CalculateLayout(
+        (int)width, (int)height,
+        g_app.shell.titlebar_height,
+        g_app.shell.frame_visual_thickness,
+        g_app.shell.titlebar_command_groups);
+    hit = Titlebar_HitTest(&layout, x, y);
+    if (hit == TITLEBAR_HIT_MENU_BUTTON) {
+        g_app.menu_button_state = BUTTON_STATE_PRESSED;
+        App_SubmitShellCommand(APP_SHELL_COMMAND_SHOW_MENU);
+        return;
+    }
+    if (hit == TITLEBAR_HIT_DRAG_BAR) {
+        g_app.menu_button_state = BUTTON_STATE_NORMAL;
+        Platform_BeginWindowDrag(g_app.hwnd);
+    }
+
+    /* 2. Otherwise: editor cursor positioning */
     if (EditorView_HitTestCursor(g_app.render,
                                  Editor_GetDocument(&g_app.editor),
                                  (int)width,
@@ -1065,6 +1135,38 @@ int App_SubmitShellCommand(AppShellCommand command)
 
     if (command == APP_SHELL_COMMAND_NONE)
         return 1;
+
+    /* SHOW_MENU requires immediate execution (TrackPopupMenu) */
+    if (command == APP_SHELL_COMMAND_SHOW_MENU)
+    {
+        HMENU hMenu;
+        int cmd;
+        POINT pt;
+
+        GetCursorPos(&pt);
+        hMenu = CreatePopupMenu();
+        AppendMenuW(hMenu, MF_STRING, 100, L"关闭");
+        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hMenu, MF_STRING, 101, L"关于 DeskNote...");
+        cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
+                             pt.x, pt.y, 0, g_app.hwnd, NULL);
+        DestroyMenu(hMenu);
+
+        if (cmd == 100) /* 关闭 */
+            PostQuitMessage(0);
+        else if (cmd == 101) /* 关于 */
+            MessageBoxW(g_app.hwnd,
+                L"DeskNote v0.1\n\n"
+                L"A lightweight desktop notes application.\n\n"
+                L"Uses md4c - Markdown for C\n"
+                L"Copyright (c) 2016, Martin Mitas\n"
+                L"MIT License",
+                L"关于 DeskNote",
+                MB_OK | MB_ICONINFORMATION);
+        return 0;
+    }
+
+    /* Other commands: validate group and store */
     if (App_GetShellCommandGroupInternal(command, &group) != 0)
         return 1;
     if ((g_app.shell.titlebar_command_groups & (unsigned int)group) == 0)
