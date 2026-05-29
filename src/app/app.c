@@ -1153,8 +1153,8 @@ int App_SubmitShellCommand(AppShellCommand command)
                              pt.x, pt.y, 0, g_app.hwnd, NULL);
         DestroyMenu(hMenu);
 
-        if (cmd == 100) /* 关闭 */
-            PostQuitMessage(0);
+        if (cmd == 100) /* 关闭 → 改为隐藏到托盘（退出唯一入口在托盘菜单） */
+            App_HideToTray(g_app.hwnd);
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,
                 L"DeskNote v0.1\n\n"
