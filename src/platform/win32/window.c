@@ -111,13 +111,25 @@ int Window_Run(void)
     if (!RegisterClassW(&wc))
         return 1;
 
+    /* Shell-2b_1a: 计算初始位置（屏幕右上角）*/
+    int window_x = CW_USEDEFAULT;
+    int window_y = CW_USEDEFAULT;
+    {
+        RECT work_area;
+        if (SystemParametersInfoW(SPI_GETWORKAREA, 0, &work_area, 0))
+        {
+            window_x = (int)(work_area.right - 240);
+            window_y = (int)work_area.top;
+        }
+    }
+
     HWND hwnd = CreateWindowExW(
         0,
         L"DeskNoteWindow",
         L"DeskNote",
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        800, 600,
+        window_x, window_y,
+        240, 388,       /* Shell-2b_1: 默认便签尺寸 */
         NULL, NULL, instance, NULL);
 
     if (!hwnd)

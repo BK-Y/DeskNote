@@ -83,7 +83,36 @@ LRESULT Platform_Nonclient_HandleNCHitTest(HWND hwnd, LPARAM lParam)
 
     int x = pt.x - wr.left;
     int y = pt.y - wr.top;
-    int w = wr.right - wr.left;
+    int win_w = wr.right - wr.left;
+    int win_h = wr.bottom - wr.top;
+
+    /* ========== 缩放热区 ========== */
+    int resize_zone = g_frame_resize_thickness;  /* 6px */
+
+    /* ========== 四角缩放热区（优先于四边） ========== */
+    if (x < resize_zone && y < resize_zone)
+        return HTTOPLEFT;
+    if (x >= win_w - resize_zone && y < resize_zone)
+        return HTTOPRIGHT;
+    if (x < resize_zone && y >= win_h - resize_zone)
+        return HTBOTTOMLEFT;
+    if (x >= win_w - resize_zone && y >= win_h - resize_zone)
+        return HTBOTTOMRIGHT;
+
+    /* ========== 四边缩放热区（排除四角，优先级高于标题栏拖拽） ========== */
+
+    /* 左边（排除左上角、左下角）*/
+    if (x < resize_zone && y >= resize_zone && y < win_h - resize_zone)
+        return HTLEFT;
+    /* 右边（排除右上角、右下角）*/
+    if (x >= win_w - resize_zone && y >= resize_zone && y < win_h - resize_zone)
+        return HTRIGHT;
+    /* 上边（排除左上角、右上角）*/
+    if (y < resize_zone && x >= resize_zone && x < win_w - resize_zone)
+        return HTTOP;
+    /* 下边（排除左下角、右下角）*/
+    if (y >= win_h - resize_zone && x >= resize_zone && x < win_w - resize_zone)
+        return HTBOTTOM;
 
     /*
      * Titlebar area: y in [0, g_titlebar_height) after frame_visual_thickness offset.
@@ -94,7 +123,7 @@ LRESULT Platform_Nonclient_HandleNCHitTest(HWND hwnd, LPARAM lParam)
         y < g_frame_visual_thickness + g_titlebar_height)
     {
         /* Menu button region: rightmost 46px */
-        if (x >= w - 46 && x < w)
+        if (x >= win_w - 46 && x < win_w)
             return HTCLIENT;
         return HTCAPTION;
     }

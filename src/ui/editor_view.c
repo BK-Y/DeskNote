@@ -10,10 +10,10 @@ static int g_has_client_area_rect = 0;
 
 static EditorViewLayout EditorView_CalculateLayout(int window_width, int window_height)
 {
-    const int margin = 24;
-    const int top_margin = 24;
+    const int margin = 0;           /* Shell-2b_1: 铺满客户区 */
+    const int top_margin = 0;       /* Shell-2b_1: 铺满客户区 */
     const int text_horizontal_padding = 16;
-    const int text_vertical_padding = 12;
+    const int text_vertical_padding = 0;  /* Shell-2b_1: 去掉上下 padding */
     RenderRect client_area_rect;
     EditorViewLayout layout;
 

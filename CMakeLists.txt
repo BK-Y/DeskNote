@@ -4,6 +4,9 @@ project(DeskNote VERSION 0.1.0 LANGUAGES C)
 # Unicode 编译（Win32 API 宽字符）
 add_definitions(-DUNICODE -D_UNICODE)
 
+# 尺寸优化
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Os -s")
+
 # ============================================================
 # 第三方库：md4c（Markdown 解析器）
 # ============================================================
