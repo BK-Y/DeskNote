@@ -162,6 +162,7 @@ static int App_GetShellCommandGroupInternal(AppShellCommand command, AppTitlebar
 
     case APP_SHELL_COMMAND_HIDE_TO_TRAY:
     case APP_SHELL_COMMAND_RESTORE_FROM_TRAY:
+    case APP_SHELL_COMMAND_SHOW_TRAY_MENU:
         *out_group = APP_TITLEBAR_COMMAND_GROUP_BACKGROUND_ACTIONS;
         return 0;
 
@@ -1261,8 +1262,6 @@ static int App_ApplyShellChromeState(void)
 }
 
 /* === Shell-3a_1: 托盘图标生命周期 === */
-
-#define WM_TRAYICON (WM_APP + 1)
 
 int App_InitTrayIcon(HWND hwnd)
 {

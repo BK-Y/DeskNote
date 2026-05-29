@@ -67,6 +67,24 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_TIMER:
         if (wParam == WINDOW_AUTOSAVE_TIMER_ID)
         {
+            /* Shell-3a_2: 在处理自动保存前，先收束待处理的托盘命令 */
+            AppShellCommand cmd;
+            if (App_TakePendingShellCommand(&cmd) == 0)
+            {
+                switch (cmd)
+                {
+                    case APP_SHELL_COMMAND_RESTORE_FROM_TRAY:
+                        ShowWindow(hwnd, SW_SHOW);
+                        SetForegroundWindow(hwnd);
+                        break;
+                    case APP_SHELL_COMMAND_SHOW_TRAY_MENU:
+                        Platform_ShowTrayMenu(hwnd);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
             App_OnTick();
             return 0;
         }
@@ -74,6 +92,27 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_SIZE:
         (void)App_OnResize((unsigned int)LOWORD(lParam), (unsigned int)HIWORD(lParam));
+        return 0;
+
+    /* Shell-3a_2: 托盘消息 — 只做翻译，不做执行 */
+    case WM_TRAYICON:
+        if (lParam == WM_LBUTTONUP)
+            App_SubmitShellCommand(APP_SHELL_COMMAND_RESTORE_FROM_TRAY);
+        else if (lParam == WM_RBUTTONUP)
+            App_SubmitShellCommand(APP_SHELL_COMMAND_SHOW_TRAY_MENU);
+        return 0;
+
+    /* Shell-3a_2: 托盘菜单命令 */
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+            case 1001: /* 托盘菜单：显示窗口 */
+                App_SubmitShellCommand(APP_SHELL_COMMAND_RESTORE_FROM_TRAY);
+                break;
+            case 1002: /* 托盘菜单：退出 */
+                DestroyWindow(hwnd);
+                break;
+        }
         return 0;
 
     case WM_DESTROY:
@@ -219,6 +258,20 @@ void Platform_BeginWindowDrag(HWND hwnd)
 
     ReleaseCapture();
     SendMessageW(hwnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
+}
+
+/* Shell-3a_2: 弹出托盘右键菜单 */
+void Platform_ShowTrayMenu(HWND hwnd)
+{
+    HMENU hMenu = CreatePopupMenu();
+    AppendMenuW(hMenu, MF_STRING, 1001, L"显示窗口");
+    AppendMenuW(hMenu, MF_STRING, 1002, L"退出");
+
+    POINT pt;
+    GetCursorPos(&pt);
+    SetForegroundWindow(hwnd);
+    TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+    DestroyMenu(hMenu);
 }
 
 int Platform_RebuildClientArea(HWND hwnd)
