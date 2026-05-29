@@ -74,8 +74,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 switch (cmd)
                 {
                     case APP_SHELL_COMMAND_RESTORE_FROM_TRAY:
-                        ShowWindow(hwnd, SW_SHOW);
-                        SetForegroundWindow(hwnd);
+                        App_RestoreFromTray(hwnd);
                         break;
                     case APP_SHELL_COMMAND_SHOW_TRAY_MENU:
                         Platform_ShowTrayMenu(hwnd);

@@ -33,6 +33,13 @@ typedef enum {
     APP_SHELL_COMMAND_SHOW_TRAY_MENU
 } AppShellCommand;
 
+/* Shell-3b: 壳层 presence 状态 */
+typedef enum {
+    SHELL_PRESENCE_VISIBLE_FRONT,
+    SHELL_PRESENCE_HIDDEN_TO_TRAY,
+    SHELL_PRESENCE_EXITING
+} ShellPresenceState;
+
 typedef struct {
     int use_custom_chrome;
     int titlebar_height;
@@ -70,5 +77,10 @@ int App_RequestClientRebuild(void);
 /* Shell-3a_1: 托盘图标生命周期 */
 int App_InitTrayIcon(HWND hwnd);
 void App_DestroyTrayIcon(HWND hwnd);
+
+/* Shell-3b: presence 状态管理 */
+ShellPresenceState App_GetPresenceState(void);
+void App_HideToTray(HWND hwnd);
+void App_RestoreFromTray(HWND hwnd);
 
 #endif

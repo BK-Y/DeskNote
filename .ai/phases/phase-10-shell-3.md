@@ -57,7 +57,7 @@
 |--------|------|------|-------------|------|
 | Shell-3a_1 | **已完成** | 托盘图标创建与销毁 | window.c, app.h/c | Shell-2b_done |
 | Shell-3a_2 | **已完成** | 托盘消息管线与弹出菜单 | window.c, app.c | 3a_1 |
-| Shell-3b | 后续 | presence 矩阵与显隐链 | app.h/c, window.c | 3a_2 |
+| Shell-3b | **已完成** | presence 矩阵与显隐链 | app.h/c, window.c | 3a_2 |
 | Shell-3c_1 | 后续 | 关闭策略（隐藏到托盘 vs 退出） | app.c, window.c | 3b |
 | Shell-3c_2 | 后续 | 状态持久化 | state_store.h/c, app.c | 3c_1 |
 

@@ -1293,3 +1293,25 @@ void App_DestroyTrayIcon(HWND hwnd)
     nid.uID = 1;
     Shell_NotifyIconW(NIM_DELETE, &nid);
 }
+
+/* === Shell-3b: presence 状态管理 === */
+
+static ShellPresenceState s_presence_state = SHELL_PRESENCE_VISIBLE_FRONT;
+
+ShellPresenceState App_GetPresenceState(void)
+{
+    return s_presence_state;
+}
+
+void App_HideToTray(HWND hwnd)
+{
+    s_presence_state = SHELL_PRESENCE_HIDDEN_TO_TRAY;
+    ShowWindow(hwnd, SW_HIDE);
+}
+
+void App_RestoreFromTray(HWND hwnd)
+{
+    s_presence_state = SHELL_PRESENCE_VISIBLE_FRONT;
+    ShowWindow(hwnd, SW_SHOW);
+    SetForegroundWindow(hwnd);
+}
