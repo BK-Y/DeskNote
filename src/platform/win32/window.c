@@ -114,6 +114,11 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         return 0;
 
+    /* Shell-3c_1: 窗口关闭按钮、Alt+F4 → 隐藏到托盘，不退出 */
+    case WM_CLOSE:
+        App_HideToTray(hwnd);
+        return 0;
+
     case WM_DESTROY:
         KillTimer(hwnd, WINDOW_AUTOSAVE_TIMER_ID);
         App_DestroyTrayIcon(hwnd);
