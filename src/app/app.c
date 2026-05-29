@@ -1146,7 +1146,7 @@ int App_SubmitShellCommand(AppShellCommand command)
 
         GetCursorPos(&pt);
         hMenu = CreatePopupMenu();
-        AppendMenuW(hMenu, MF_STRING, 100, L"关闭");
+        AppendMenuW(hMenu, MF_STRING, 100, L"隐藏");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hMenu, MF_STRING, 101, L"关于 DeskNote...");
         cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
