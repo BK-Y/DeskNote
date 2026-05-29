@@ -11,6 +11,7 @@ typedef struct {
     int titlebar_height;
     int frame_visual_thickness;
     int shell_resident_mode;
+    int presence_state;              /* Shell-3c_2: 0=visible_front, 1=hidden_to_tray, 2=exiting */
 } StateData;
 
 int StateStore_GetRootPath(wchar_t* buffer, int buffer_count);

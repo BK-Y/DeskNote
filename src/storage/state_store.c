@@ -223,6 +223,10 @@ int StateStore_Load(StateData* out_state)
         {
             out_state->shell_resident_mode = _wtoi(line_start + 20);
         }
+        else if (wcsncmp(line_start, L"presence_state=", 15) == 0)
+        {
+            out_state->presence_state = _wtoi(line_start + 15);
+        }
 
         if (line_end == parse_cursor)
             break;
@@ -256,13 +260,15 @@ int StateStore_Save(const StateData* state)
                                   L"use_custom_chrome=%d\r\n"
                                   L"titlebar_height=%d\r\n"
                                   L"frame_visual_thickness=%d\r\n"
-                                  L"shell_resident_mode=%d\r\n",
+                                  L"shell_resident_mode=%d\r\n"
+                                  L"presence_state=%d\r\n",
                                   STATE_STORE_VERSION,
                                   state->has_last_file ? state->last_file : L"",
                                   state->use_custom_chrome,
                                   state->titlebar_height,
                                   state->frame_visual_thickness,
-                                  state->shell_resident_mode);
+                                  state->shell_resident_mode,
+                                  state->presence_state);
     if (written_characters < 0)
         return 1;
 

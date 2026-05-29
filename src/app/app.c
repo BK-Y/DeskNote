@@ -810,6 +810,16 @@ int App_Init(HWND hwnd)
         return 1;
     }
 
+    /* Shell-3c_2: 启动时恢复上次的 presence 状态 */
+    {
+        StateData state;
+        StateStore_Load(&state);
+        if (state.presence_state == 1) /* hidden_to_tray */
+        {
+            ShowWindow(hwnd, SW_HIDE);
+        }
+    }
+
     App_EnsureCaretVisible();
 
     return 0;
@@ -1307,6 +1317,12 @@ void App_HideToTray(HWND hwnd)
 {
     s_presence_state = SHELL_PRESENCE_HIDDEN_TO_TRAY;
     ShowWindow(hwnd, SW_HIDE);
+
+    /* Shell-3c_2: 持久化当前 presence 状态 */
+    StateData state;
+    StateStore_Load(&state);
+    state.presence_state = (int)SHELL_PRESENCE_HIDDEN_TO_TRAY;
+    StateStore_Save(&state);
 }
 
 void App_RestoreFromTray(HWND hwnd)
@@ -1314,4 +1330,10 @@ void App_RestoreFromTray(HWND hwnd)
     s_presence_state = SHELL_PRESENCE_VISIBLE_FRONT;
     ShowWindow(hwnd, SW_SHOW);
     SetForegroundWindow(hwnd);
+
+    /* Shell-3c_2: 持久化当前 presence 状态 */
+    StateData state;
+    StateStore_Load(&state);
+    state.presence_state = (int)SHELL_PRESENCE_VISIBLE_FRONT;
+    StateStore_Save(&state);
 }
