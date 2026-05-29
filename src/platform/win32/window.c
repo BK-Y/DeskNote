@@ -78,6 +78,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_DESTROY:
         KillTimer(hwnd, WINDOW_AUTOSAVE_TIMER_ID);
+        App_DestroyTrayIcon(hwnd);
         App_Shutdown();
         Platform_Nonclient_Shutdown(hwnd);
         PostQuitMessage(0);
@@ -143,6 +144,9 @@ int Window_Run(void)
         DestroyWindow(hwnd);
         return 1;
     }
+
+    /* Shell-3a_1: 初始化托盘图标（启动即有，无需条件） */
+    (void)App_InitTrayIcon(hwnd);
 
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);

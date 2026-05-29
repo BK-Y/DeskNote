@@ -1259,3 +1259,38 @@ static int App_ApplyShellChromeState(void)
         return 1;
     return Platform_RebuildClientArea(g_app.hwnd);
 }
+
+/* === Shell-3a_1: 托盘图标生命周期 === */
+
+#define WM_TRAYICON (WM_APP + 1)
+
+int App_InitTrayIcon(HWND hwnd)
+{
+    NOTIFYICONDATAW nid;
+    HICON hIcon;
+
+    memset(&nid, 0, sizeof(nid));
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    nid.uCallbackMessage = WM_TRAYICON;
+    wcsncpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(nid.szTip[0]), L"DeskNote", _TRUNCATE);
+
+    hIcon = LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(1));
+    if (hIcon == NULL)
+        hIcon = LoadIconW(NULL, IDI_APPLICATION);
+    nid.hIcon = hIcon;
+
+    return Shell_NotifyIconW(NIM_ADD, &nid) ? 0 : 1;
+}
+
+void App_DestroyTrayIcon(HWND hwnd)
+{
+    NOTIFYICONDATAW nid;
+    memset(&nid, 0, sizeof(nid));
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+}

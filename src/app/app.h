@@ -66,4 +66,8 @@ int App_GetShellCommandGroup(AppShellCommand command, AppTitlebarCommandGroup* o
 int App_EnableCustomChrome(int enable);
 int App_RequestClientRebuild(void);
 
+/* Shell-3a_1: 托盘图标生命周期 */
+int App_InitTrayIcon(HWND hwnd);
+void App_DestroyTrayIcon(HWND hwnd);
+
 #endif
