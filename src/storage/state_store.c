@@ -227,6 +227,22 @@ int StateStore_Load(StateData* out_state)
         {
             out_state->presence_state = _wtoi(line_start + 15);
         }
+        else if (wcsncmp(line_start, L"last_floating_left=", 19) == 0)
+        {
+            out_state->last_floating_left = _wtoi(line_start + 19);
+        }
+        else if (wcsncmp(line_start, L"last_floating_top=", 18) == 0)
+        {
+            out_state->last_floating_top = _wtoi(line_start + 18);
+        }
+        else if (wcsncmp(line_start, L"last_floating_width=", 20) == 0)
+        {
+            out_state->last_floating_width = _wtoi(line_start + 20);
+        }
+        else if (wcsncmp(line_start, L"last_floating_height=", 21) == 0)
+        {
+            out_state->last_floating_height = _wtoi(line_start + 21);
+        }
 
         if (line_end == parse_cursor)
             break;
@@ -261,14 +277,22 @@ int StateStore_Save(const StateData* state)
                                   L"titlebar_height=%d\r\n"
                                   L"frame_visual_thickness=%d\r\n"
                                   L"shell_resident_mode=%d\r\n"
-                                  L"presence_state=%d\r\n",
+                                  L"presence_state=%d\r\n"
+                                  L"last_floating_left=%d\r\n"
+                                  L"last_floating_top=%d\r\n"
+                                  L"last_floating_width=%d\r\n"
+                                  L"last_floating_height=%d\r\n",
                                   STATE_STORE_VERSION,
                                   state->has_last_file ? state->last_file : L"",
                                   state->use_custom_chrome,
                                   state->titlebar_height,
                                   state->frame_visual_thickness,
                                   state->shell_resident_mode,
-                                  state->presence_state);
+                                  state->presence_state,
+                                  state->last_floating_left,
+                                  state->last_floating_top,
+                                  state->last_floating_width,
+                                  state->last_floating_height);
     if (written_characters < 0)
         return 1;
 

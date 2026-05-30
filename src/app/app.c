@@ -820,6 +820,21 @@ int App_Init(HWND hwnd)
         }
     }
 
+    /* Shell-4a_2: 启动时恢复浮动置顶状态 */
+    {
+        StateData state;
+        StateStore_Load(&state);
+        if (state.shell_resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+        {
+            SetWindowPos(hwnd, HWND_TOPMOST,
+                        state.last_floating_left,
+                        state.last_floating_top,
+                        state.last_floating_width,
+                        state.last_floating_height,
+                        SWP_NOZORDER);
+        }
+    }
+
     App_EnsureCaretVisible();
 
     return 0;
@@ -1167,8 +1182,23 @@ int App_SubmitShellCommand(AppShellCommand command)
 
         if (cmd == 100) /* 隐藏到托盘 */
             App_HideToTray(g_app.hwnd);
-        else if (cmd == 102) /* 浮动置顶 — 提交命令到 app，由 window.c 收束执行 */
+        else if (cmd == 102) /* 浮动置顶 */
+        {
+            /* Shell-4a_2: 先保存当前窗口位置到 state.ini */
+            RECT rect;
+            if (GetWindowRect(g_app.hwnd, &rect))
+            {
+                StateData state;
+                StateStore_Load(&state);
+                state.last_floating_left   = rect.left;
+                state.last_floating_top    = rect.top;
+                state.last_floating_width  = rect.right - rect.left;
+                state.last_floating_height = rect.bottom - rect.top;
+                StateStore_Save(&state);
+            }
+            /* 提交切换命令，由 window.c 收束执行 SetWindowPos */
             App_SubmitShellCommand(APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST);
+        }
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,
                 L"DeskNote v0.1\n\n"
