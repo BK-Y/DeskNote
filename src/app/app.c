@@ -1158,13 +1158,17 @@ int App_SubmitShellCommand(AppShellCommand command)
         hMenu = CreatePopupMenu();
         AppendMenuW(hMenu, MF_STRING, 100, L"隐藏");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hMenu, MF_STRING, 102, L"浮动置顶");
+        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hMenu, MF_STRING, 101, L"关于 DeskNote...");
         cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
                              pt.x, pt.y, 0, g_app.hwnd, NULL);
         DestroyMenu(hMenu);
 
-        if (cmd == 100) /* 关闭 → 改为隐藏到托盘（退出唯一入口在托盘菜单） */
+        if (cmd == 100) /* 隐藏到托盘 */
             App_HideToTray(g_app.hwnd);
+        else if (cmd == 102) /* 浮动置顶 — 提交命令到 app，由 window.c 收束执行 */
+            App_SubmitShellCommand(APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST);
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,
                 L"DeskNote v0.1\n\n"
@@ -1313,6 +1317,16 @@ ShellPresenceState App_GetPresenceState(void)
     return s_presence_state;
 }
 
+AppShellResidentMode App_GetResidentMode(void)
+{
+    return g_app.shell.resident_mode;
+}
+
+void App_SetResidentMode(AppShellResidentMode mode)
+{
+    g_app.shell.resident_mode = mode;
+}
+
 void App_HideToTray(HWND hwnd)
 {
     s_presence_state = SHELL_PRESENCE_HIDDEN_TO_TRAY;
@@ -1336,4 +1350,10 @@ void App_RestoreFromTray(HWND hwnd)
     StateStore_Load(&state);
     state.presence_state = (int)SHELL_PRESENCE_VISIBLE_FRONT;
     StateStore_Save(&state);
+
+    /* Shell-4a_1: 恢复 topmost（如果之前是置顶模式）—此处只做判断，不直接调系统 API */
+    if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+    {
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    }
 }

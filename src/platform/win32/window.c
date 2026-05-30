@@ -79,6 +79,18 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     case APP_SHELL_COMMAND_SHOW_TRAY_MENU:
                         Platform_ShowTrayMenu(hwnd);
                         break;
+                    case APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST:
+                        if (App_GetResidentMode() == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+                        {
+                            SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+                            App_SetResidentMode(APP_SHELL_RESIDENT_MODE_NONE);
+                        }
+                        else
+                        {
+                            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+                            App_SetResidentMode(APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST);
+                        }
+                        break;
                     default:
                         break;
                 }

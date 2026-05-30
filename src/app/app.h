@@ -18,7 +18,8 @@ typedef enum {
 } AppTitlebarCommandGroup;
 
 typedef enum {
-    APP_SHELL_RESIDENT_MODE_NONE = 0
+    APP_SHELL_RESIDENT_MODE_NONE = 0,
+    APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST
 } AppShellResidentMode;
 
 typedef enum {
@@ -82,5 +83,9 @@ void App_DestroyTrayIcon(HWND hwnd);
 ShellPresenceState App_GetPresenceState(void);
 void App_HideToTray(HWND hwnd);
 void App_RestoreFromTray(HWND hwnd);
+
+/* Shell-4a_1: 常驻模式状态 */
+AppShellResidentMode App_GetResidentMode(void);
+void App_SetResidentMode(AppShellResidentMode mode);
 
 #endif
