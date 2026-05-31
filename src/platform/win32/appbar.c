@@ -34,6 +34,10 @@ int AppBar_Unregister(HWND hwnd)
 
     SHAppBarMessage(ABM_REMOVE, &s_appbar.data);
     s_appbar.registered = 0;
+
+    /* 恢复工作区，通知其他窗口 */
+    SystemParametersInfoW(SPI_SETWORKAREA, 0, NULL, SPIF_SENDCHANGE);
+
     return 0;
 }
 
@@ -63,6 +67,9 @@ int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
 
     SHAppBarMessage(ABM_QUERYPOS, &s_appbar.data);
     SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
+
+    /* 广播工作区变更，强制其他最大化窗口重新查询并避让 */
+    SystemParametersInfoW(SPI_SETWORKAREA, 0, NULL, SPIF_SENDCHANGE);
 
     MoveWindow(hwnd,
                s_appbar.data.rc.left,
