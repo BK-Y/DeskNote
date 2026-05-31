@@ -2,9 +2,6 @@
 #include "appbar.h"
 #include "../../storage/state_store.h"
 
-#include <wchar.h>       /* phase-10-shell-5a-repair-3: swprintf */
-#include <debugapi.h>    /* phase-10-shell-5a-repair-3: OutputDebugStringW */
-
 typedef struct {
     APPBARDATA data;
     int registered;
@@ -12,15 +9,24 @@ typedef struct {
 
 static AppBarState s_appbar = {0};
 
-int AppBar_Register(HWND hwnd)
+int AppBar_Register(HWND hwnd, AppDockEdge edge, int thickness)
 {
+    RECT rc;
+
     if (s_appbar.registered)
         return 0;
 
+    /* Shell-5a-repair-4b: ABM_NEW 前设好 uEdge 和 rc，一次到位 */
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
     memset(&s_appbar.data, 0, sizeof(s_appbar.data));
     s_appbar.data.cbSize = sizeof(s_appbar.data);
     s_appbar.data.hWnd = hwnd;
-    s_appbar.data.uCallbackMessage = (UINT)(WM_APP + 2); /* AppBar 通知消息 */
+    s_appbar.data.uCallbackMessage = (UINT)(WM_APP + 2);
+    s_appbar.data.uEdge = (UINT)edge;
+    s_appbar.data.rc = rc;
+
+    if (edge == APP_DOCK_RIGHT)
+        s_appbar.data.rc.left = rc.right - thickness;
 
     if (!SHAppBarMessage(ABM_NEW, &s_appbar.data))
         return 1;
@@ -45,14 +51,6 @@ int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
     RECT rc;
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
 
-    /* ---- phase-10-shell-5a-repair-3: 诊断输出 1 — 原始工作区 ---- */
-    {
-        wchar_t buf[256];
-        swprintf(buf, 256, L"[Shell-5a-repair-3] workarea: L=%d T=%d R=%d B=%d\r\n",
-                 rc.left, rc.top, rc.right, rc.bottom);
-        OutputDebugStringW(buf);
-    }
-
     s_appbar.data.uEdge = (UINT)edge;
     s_appbar.data.rc = rc;
 
@@ -72,52 +70,8 @@ int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
         break;
     }
 
-    /* ---- phase-10-shell-5a-repair-3: 诊断输出 2 — 我们自己设置的 rc ---- */
-    {
-        wchar_t buf[256];
-        swprintf(buf, 256, L"[Shell-5a-repair-3] before ABM_QUERYPOS: L=%d T=%d R=%d B=%d (w=%d h=%d)\r\n",
-                 s_appbar.data.rc.left, s_appbar.data.rc.top,
-                 s_appbar.data.rc.right, s_appbar.data.rc.bottom,
-                 s_appbar.data.rc.right - s_appbar.data.rc.left,
-                 s_appbar.data.rc.bottom - s_appbar.data.rc.top);
-        OutputDebugStringW(buf);
-    }
-
     SHAppBarMessage(ABM_QUERYPOS, &s_appbar.data);
-
-    /* ---- phase-10-shell-5a-repair-3: 诊断输出 3 — QUERYPOS 之后 ---- */
-    {
-        wchar_t buf[256];
-        swprintf(buf, 256, L"[Shell-5a-repair-3] after ABM_QUERYPOS: L=%d T=%d R=%d B=%d (w=%d h=%d)\r\n",
-                 s_appbar.data.rc.left, s_appbar.data.rc.top,
-                 s_appbar.data.rc.right, s_appbar.data.rc.bottom,
-                 s_appbar.data.rc.right - s_appbar.data.rc.left,
-                 s_appbar.data.rc.bottom - s_appbar.data.rc.top);
-        OutputDebugStringW(buf);
-    }
-
     SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
-
-    /* ---- phase-10-shell-5a-repair-3: 诊断输出 4 — SETPOS 之后 ---- */
-    {
-        wchar_t buf[256];
-        swprintf(buf, 256, L"[Shell-5a-repair-3] after ABM_SETPOS: L=%d T=%d R=%d B=%d (w=%d h=%d)\r\n",
-                 s_appbar.data.rc.left, s_appbar.data.rc.top,
-                 s_appbar.data.rc.right, s_appbar.data.rc.bottom,
-                 s_appbar.data.rc.right - s_appbar.data.rc.left,
-                 s_appbar.data.rc.bottom - s_appbar.data.rc.top);
-        OutputDebugStringW(buf);
-    }
-
-    /* ---- phase-10-shell-5a-repair-3: 诊断输出 5 — 最终 MoveWindow 参数 ---- */
-    {
-        wchar_t buf[256];
-        swprintf(buf, 256, L"[Shell-5a-repair-3] MoveWindow: x=%d y=%d w=%d h=%d\r\n",
-                 s_appbar.data.rc.left, s_appbar.data.rc.top,
-                 s_appbar.data.rc.right - s_appbar.data.rc.left,
-                 s_appbar.data.rc.bottom - s_appbar.data.rc.top);
-        OutputDebugStringW(buf);
-    }
 
     MoveWindow(hwnd,
                s_appbar.data.rc.left,
@@ -133,4 +87,33 @@ int AppBar_IsRegistered(HWND hwnd)
 {
     (void)hwnd;
     return s_appbar.registered;
+}
+
+int AppBar_ReRegister(HWND hwnd)
+{
+    AppDockEdge edge;
+    int thickness;
+
+    if (!s_appbar.registered)
+        return 0;
+
+    edge = (AppDockEdge)s_appbar.data.uEdge;
+    thickness = s_appbar.data.rc.right - s_appbar.data.rc.left;
+
+    s_appbar.registered = 0;
+    if (AppBar_Register(hwnd, edge, thickness) != 0)
+        return 1;
+
+    return AppBar_SetPosition(hwnd, edge, thickness);
+}
+
+int AppBar_ReadDockConfig(AppDockEdge* out_edge, int* out_thickness)
+{
+    StateData state;
+    StateStore_Load(&state);
+    if (out_edge)
+        *out_edge = (AppDockEdge)state.dock_edge;
+    if (out_thickness)
+        *out_thickness = state.dock_thickness;
+    return 0;
 }
