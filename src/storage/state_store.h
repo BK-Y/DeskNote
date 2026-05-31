@@ -16,6 +16,8 @@ typedef struct {
     int last_floating_top;
     int last_floating_width;
     int last_floating_height;
+    int dock_edge;                   /* Shell-5a: AppBar 贴边方向 (0=左/1=右/2=上/3=下) */
+    int dock_thickness;              /* Shell-5a: AppBar 保留区厚度 */
 } StateData;
 
 int StateStore_GetRootPath(wchar_t* buffer, int buffer_count);

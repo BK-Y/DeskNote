@@ -2,6 +2,7 @@
 #include "../editor/editor.h"
 #include "../platform/win32/nonclient.h"
 #include "../platform/win32/window.h"
+#include "../platform/win32/appbar.h"
 #include "../render/render.h"
 #include "../storage/note_store.h"
 #include "../storage/state_store.h"
@@ -1174,6 +1175,7 @@ int App_SubmitShellCommand(AppShellCommand command)
         AppendMenuW(hMenu, MF_STRING, 100, L"隐藏");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hMenu, MF_STRING, 102, L"浮动置顶");
+        AppendMenuW(hMenu, MF_STRING, 103, L"贴边占位");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hMenu, MF_STRING, 101, L"关于 DeskNote...");
         cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
@@ -1198,6 +1200,28 @@ int App_SubmitShellCommand(AppShellCommand command)
             }
             /* 提交切换命令，由 window.c 收束执行 SetWindowPos */
             App_SubmitShellCommand(APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST);
+        }
+        else if (cmd == 103) /* 贴边占位 */
+        {
+            /* Shell-5a: 先更新 resident_mode 并保存 dock 配置 */
+            if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+            {
+                g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
+            }
+            else
+            {
+                g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_EDGE_RESERVED;
+
+                /* 保存 dock 配置到 state.ini */
+                StateData state;
+                StateStore_Load(&state);
+                state.dock_edge = APP_DOCK_RIGHT;
+                state.dock_thickness = 240;
+                StateStore_Save(&state);
+            }
+
+            /* 提交命令给 window.c，由它执行 AppBar_Register/Unregister */
+            App_SubmitShellCommand(APP_SHELL_COMMAND_ENTER_EDGE_RESERVED);
         }
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,

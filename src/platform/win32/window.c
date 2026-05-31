@@ -3,6 +3,7 @@
 #include <windowsx.h>
 #include "window.h"
 #include "nonclient.h"
+#include "appbar.h"
 
 #include <winerror.h>
 
@@ -90,6 +91,13 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
                             App_SetResidentMode(APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST);
                         }
+                        break;
+                    case APP_SHELL_COMMAND_ENTER_EDGE_RESERVED:
+                        /* Shell-5a: 只调 AppBar API，不碰 app 状态 */
+                        if (AppBar_IsRegistered(hwnd))
+                            AppBar_Unregister(hwnd);
+                        else if (AppBar_Register(hwnd) == 0)
+                            AppBar_SetPosition(hwnd, APP_DOCK_RIGHT, 240);
                         break;
                     default:
                         break;

@@ -25,6 +25,7 @@ set(SOURCES
     src/editor/editor.c
     src/platform/win32/window.c
     src/platform/win32/nonclient.c
+    src/platform/win32/appbar.c
     src/render/render.c
     src/storage/note_store.c
     src/storage/state_store.c

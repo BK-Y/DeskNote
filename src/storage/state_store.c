@@ -243,6 +243,14 @@ int StateStore_Load(StateData* out_state)
         {
             out_state->last_floating_height = _wtoi(line_start + 21);
         }
+        else if (wcsncmp(line_start, L"dock_edge=", 10) == 0)
+        {
+            out_state->dock_edge = _wtoi(line_start + 10);
+        }
+        else if (wcsncmp(line_start, L"dock_thickness=", 15) == 0)
+        {
+            out_state->dock_thickness = _wtoi(line_start + 15);
+        }
 
         if (line_end == parse_cursor)
             break;
@@ -281,7 +289,9 @@ int StateStore_Save(const StateData* state)
                                   L"last_floating_left=%d\r\n"
                                   L"last_floating_top=%d\r\n"
                                   L"last_floating_width=%d\r\n"
-                                  L"last_floating_height=%d\r\n",
+                                  L"last_floating_height=%d\r\n"
+                                  L"dock_edge=%d\r\n"
+                                  L"dock_thickness=%d\r\n",
                                   STATE_STORE_VERSION,
                                   state->has_last_file ? state->last_file : L"",
                                   state->use_custom_chrome,
@@ -292,7 +302,9 @@ int StateStore_Save(const StateData* state)
                                   state->last_floating_left,
                                   state->last_floating_top,
                                   state->last_floating_width,
-                                  state->last_floating_height);
+                                  state->last_floating_height,
+                                  state->dock_edge,
+                                  state->dock_thickness);
     if (written_characters < 0)
         return 1;
 
