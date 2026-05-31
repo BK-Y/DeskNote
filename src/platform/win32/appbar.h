@@ -3,12 +3,12 @@
 
 #include <windows.h>
 
-/* AppBar 贴边方向 */
+/* AppBar 贴边方向（必须与 Windows ABE_* 常量值一致） */
 typedef enum {
-    APP_DOCK_LEFT = 0,
-    APP_DOCK_RIGHT,
-    APP_DOCK_TOP,
-    APP_DOCK_BOTTOM
+    APP_DOCK_LEFT   = 0,  /* ABE_LEFT   */
+    APP_DOCK_TOP    = 1,  /* ABE_TOP    */
+    APP_DOCK_RIGHT  = 2,  /* ABE_RIGHT  */
+    APP_DOCK_BOTTOM = 3   /* ABE_BOTTOM */
 } AppDockEdge;
 
 /* 注册当前窗口为 AppBar，返回 0 成功 */
