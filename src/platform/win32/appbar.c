@@ -5,6 +5,7 @@
 typedef struct {
     APPBARDATA data;
     int registered;
+    RECT initial_workarea;  /* Shell-5a-repair-4d: Register 时保存的初始工作区 */
 } AppBarState;
 
 static AppBarState s_appbar = {0};
@@ -18,6 +19,8 @@ int AppBar_Register(HWND hwnd, AppDockEdge edge, int thickness)
 
     /* Shell-5a-repair-4b: ABM_NEW 前设好 uEdge 和 rc，一次到位 */
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
+    s_appbar.initial_workarea = rc;  /* Shell-5a-repair-4d: 保存原始工作区，供 SetPosition 复用 */
+
     memset(&s_appbar.data, 0, sizeof(s_appbar.data));
     s_appbar.data.cbSize = sizeof(s_appbar.data);
     s_appbar.data.hWnd = hwnd;
@@ -48,8 +51,8 @@ int AppBar_Unregister(HWND hwnd)
 
 int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
 {
-    RECT rc;
-    SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
+    /* Shell-5a-repair-4d: 使用 Register 时保存的原始工作区，不再重读 SPI_GETWORKAREA */
+    RECT rc = s_appbar.initial_workarea;
 
     s_appbar.data.uEdge = (UINT)edge;
     s_appbar.data.rc = rc;
