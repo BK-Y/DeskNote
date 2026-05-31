@@ -1216,7 +1216,15 @@ int App_SubmitShellCommand(AppShellCommand command)
                 StateData state;
                 StateStore_Load(&state);
                 state.dock_edge = APP_DOCK_RIGHT;
-                state.dock_thickness = 240;
+
+                /* Shell-5a-repair-4a: 动态计算默认厚度 */
+                {
+                    RECT wa;
+                    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+                    state.dock_thickness = (int)((wa.right - wa.left) * 18 / 100);
+                    if (state.dock_thickness < 200) state.dock_thickness = 200;
+                    if (state.dock_thickness > 500) state.dock_thickness = 500;
+                }
                 StateStore_Save(&state);
             }
 
