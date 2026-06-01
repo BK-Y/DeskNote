@@ -35,8 +35,34 @@ int AppBar_Unregister(HWND hwnd)
     if (!s_appbar.registered)
         return 0;
 
+    /* Workaround: 先把 AppBar 劈到一条不冲突的边（底部），再移除，
+     * 避免 ABM_REMOVE 偶尔不释放原边保留区 */
+    s_appbar.data.uEdge = (UINT)APP_DOCK_BOTTOM;
+    SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
+
     SHAppBarMessage(ABM_REMOVE, &s_appbar.data);
     s_appbar.registered = 0;
+
+    /* 强制 Windows 刷新工作区 */
+    SystemParametersInfoW(SPI_SETWORKAREA, 0, NULL, 0);
+    return 0;
+}
+
+/* Shell-5b 反馈循环防护：标记当前工作区变化是否由我们自己的 ABM_SETPOS 触发 */
+static int s_own_wa_change = 0;
+
+void AppBar_MarkOwnWorkareaChange(void)
+{
+    s_own_wa_change = 1;
+}
+
+int AppBar_ConsumeOwnWorkareaChange(void)
+{
+    if (s_own_wa_change)
+    {
+        s_own_wa_change = 0;
+        return 1;
+    }
     return 0;
 }
 
@@ -73,6 +99,7 @@ int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
     }
 
     SHAppBarMessage(ABM_QUERYPOS, &s_appbar.data);
+    AppBar_MarkOwnWorkareaChange();  /* 标记：接下来的变化是我们自己引起的 */
     SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
 
     /* diag: SETPOS 后的 AppBar 矩形 */
@@ -128,4 +155,14 @@ int AppBar_ReadDockConfig(AppDockEdge* out_edge, int* out_thickness)
     if (out_thickness)
         *out_thickness = state.dock_thickness;
     return 0;
+}
+
+AppDockEdge AppBar_GetEdge(void)
+{
+    return (AppDockEdge)s_appbar.data.uEdge;
+}
+
+int AppBar_GetThickness(void)
+{
+    return s_appbar.data.rc.right - s_appbar.data.rc.left;
 }

@@ -18,6 +18,8 @@ typedef struct {
     int last_floating_height;
     int dock_edge;                   /* Shell-5a: AppBar 贴边方向 (0=左/1=右/2=上/3=下) */
     int dock_thickness;              /* Shell-5a: AppBar 保留区厚度 */
+    int release_on_hide_mode;        /* repair-5-a-4: 隐藏时释放策略 0=never 1=remember(default) 2=clear */
+    int release_on_drag_mode;        /* repair-5-a-4: 拖动后释放策略 0=never 1=to_topmost(default) 2=to_none */
 } StateData;
 
 int StateStore_GetRootPath(wchar_t* buffer, int buffer_count);

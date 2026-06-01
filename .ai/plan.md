@@ -59,7 +59,7 @@ Phase 编写与审查规则见：
 - Markdown 渲染
 - 保存安全（自动保存 + 原子保存 + 崩溃恢复）
 - 便签壳层（frameless、托盘、常驻模式）
-- 当前焦点：Shell-3c_2 状态持久化
+- 当前焦点：Shell-5a AppBar 贴边死区诊断
 
 **完成后系统具备：**
 1. 窗口脱离系统标题栏，视觉像便签
@@ -196,28 +196,65 @@ Phase 编写与审查规则见：
 | 7 | 已完成 | 保存安全：基于内存模型接入自动保存 | `./phases/done/phase-10-shell-7_done.md` |
 | 8 | 已完成 | 保存安全：基于内存模型接入原子保存 | `./phases/done/phase-10-shell-8_done.md` |
 | 9 | 已完成 | 保存安全：基于内存模型接入崩溃恢复 | `./phases/done/phase-10-shell-9_done.md` |
-| Shell-10 | 进行中 | 便签窗口壳层 | `./phases/phase-10-shell-index.md` |
+| Shell-10 | 进行中 | 便签窗口壳层（子阶段分解见下方） | `./phases/phase-10-shell-index.md` |
 | 11 | 后续 | 补基础选择 | `./phases/phase-11.md` |
 | 12 | 后续 | 补高级浏览 | `./phases/phase-12.md` |
 | 13 | 后续 | 补编辑命令面 | `./phases/phase-13.md` |
 | 14 | 后续 | 补 Markdown 交互 | `./phases/phase-14.md` |
 | 15 | 后续 | 补高级编辑 | `./phases/phase-15.md` |
 
+### Shell 壳层子阶段完成明细
+
+以下子阶段均在 `./phases/done/` 下有 `_done.md` 文件佐证：
+
+```
+Shell-1a ── 壳层状态与标题栏命令模型                          ✅ 已完成
+Shell-1b ── 最小 non-client 骨架与顶区拖拽占位                 ✅ 已完成
+Shell-1c ── Frameless 窗体切换与客户区重建                     ✅ 已完成
+Shell-1c_repair-1 ── 修复持久化回退                           ✅ 已完成
+Shell-1d ── 标题栏组件与边框视觉基线                           ✅ 已完成
+Shell-1e ── 通用按钮组件与窗口白色边框修复                     ✅ 已完成
+Shell-2a ── 菜单按钮 + 弹出菜单 + 标题栏拖拽                  ✅ 已完成
+Shell-2a_repair-1~9 ── 9 项修复                               ✅ 已完成
+Shell-2b_1 ── 默认窗口 240×388 + 编辑区铺满                   ✅ 已完成
+Shell-2b_1a ── 窗口初始位置屏幕右上角                          ✅ 已完成
+Shell-2b_2 ── 窗口四边缩放                                    ✅ 已完成
+Shell-2b_3 ── 窗口四角缩放                                    ✅ 已完成
+Shell-2b_4 ── resize 后布局回归验证                            ✅ 已完成
+Shell-3a_1 ── 托盘图标创建与销毁                               ✅ 已完成
+Shell-3a_2 ── 托盘消息管线（左键/右键菜单）                    ✅ 已完成
+Shell-3b ── Presence 矩阵（visible/hidden/exiting）            ✅ 已完成
+Shell-3c_1 ── 关闭策略（隐藏到托盘 vs 退出）                   ✅ 已完成
+Shell-3c_1_repair-1~2 ── 修复                                 ✅ 已完成
+Shell-3c_2 ── 状态持久化（presence + resident mode）          ✅ 已完成
+```
+
+**未完成：**
+
+```
+Shell-4   ── floating topmost 状态机与持久化                    ❌ 未完成
+Shell-5a  ── AppBar 注册与贴边模型（已回滚，存在死区 Bug）       ❌ 已回滚
+Shell-5b  ── AppBar 异常恢复                                    ❌ 未开始
+Shell-5c  ── 常驻模式状态提示                                    ❌ 未开始
+```
+
 ## 当前阶段焦点
 
 ### 当前阶段性目标
 
-保存安全主线 `Phase 6-9` 已完成关闭，下一阶段切换到**便签窗口壳层主线**。
+保存安全主线 `Phase 6-9` 已完成关闭，壳层主线已完成 **Shell-1a → Shell-3c_2** 全部子阶段。
 
 当前阶段性判断：
 
-1. 编辑器最小输入、保存安全、启动恢复已经具备
-2. 当前最不符合“便签产品”定位的，不是编辑链，而是窗口壳层仍然过于系统窗体化
-3. 因此后续优先级不再是继续堆编辑能力，而是先把窗口外观与系统行为收敛成便签形态
+1. ✅ 编辑器最小输入、保存安全、启动恢复已经具备
+2. ✅ Frameless 窗口、自绘标题栏、缩放拖拽、标题栏菜单已就绪
+3. ✅ 托盘图标、消息管线、presence 三态、关闭策略、状态持久化已就绪
+4. ❌ Floating topmost 仍未正式验收收口（代码中已有 `SetWindowPos(HWND_TOPMOST)` 切换和 `last_floating_*` 持久化，但 Shell-4a 计划文件无 `_done`）
+5. ❌ AppBar 贴边存在死区 Bug，5a 已回滚，阻塞贴边常驻模式上线
 
-壳层主线不再按 5 个大阶段直接推进，而是拆成多个子阶段，统一由 `phase-10-shell-index.md` 管理进度。
+当前实际瓶颈在 **Shell-5a AppBar 贴边死区诊断与修复**。
 
-当前建议的下一个可执行切入点固定为：**Shell-2b_1**（默认窗口 360x500 + 编辑区背景铺满），详见 `./phases/phase-10-shell-2b.md` 纲领文件。
+壳层子阶段统一由 `phase-10-shell-index.md` 管理进度，但该文件的状态表已严重过时（仍把 Shell-3a~3c 标为"后续"），需同步更新。
 
 ### 当前阶段产出目标
 
@@ -246,21 +283,13 @@ Phase 编写与审查规则见：
 
 当前最该读的文件：
 
-- `./phases/phase-shell-1.md`
-- `./phases/phase-shell-index.md`
-- `./phases/phase-shell-1a_done.md`
-- `./phases/phase-shell-1b_done.md`
-- `./phases/phase-shell-1c_done.md`
-- `./phases/phase-shell-1c-repair-1.md`
-- `./phases/phase-shell-1d.md`
-- `./phases/phase-shell-2a.md`
-- `./phases/phase-shell-2b.md`
-- `./phases/phase-shell-3a.md`
-- `./phases/phase-shell-3b.md`
-- `./phases/phase-shell-3c.md`
-- `./phases/phase-shell-4a.md`
-- `./phases/phase-shell-5a.md`
-- `./phases/phase-shell-5b.md`
+- `./phases/phase-10-shell-index.md` — 壳层子阶段索引（需先更新状态表）
+- `./phases/done/phase-10-shell-3c_2_done.md` — 最后一个完成的壳层子阶段
+- `./phases/phase-10-shell-5a.md` — AppBar 贴边 bug 相关计划
+- `./phases/rollback-5a.md` — 5a 回滚记录
+- `./phases/phase-10-shell-5.md` — 后续贴边占位规划
+- `./phases/phase-10-shell-4a_1.md` — floating topmost 待验收
+- `./phases/phase-10-shell-4a_2.md` — floating topmost 待验收
 - `./decisions.md`
 - `../docs/design/architecture.md`
 

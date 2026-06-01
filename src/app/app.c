@@ -13,6 +13,10 @@
 #include <string.h>
 #include <wchar.h>
 
+/* repair-5-a-5: 统一日志前缀（用于贴边修复系列的诊断输出） */
+#define R5A_LOG_PREFIX L"[s5a-r5a] "
+#define R5A_WriteLog(msg) OutputDebugStringW(msg)
+
 typedef struct {
     HWND hwnd;
     RenderContext* render;
@@ -93,6 +97,22 @@ enum {
     APP_DEFAULT_FRAME_VISUAL_THICKNESS = 1,
     APP_DEFAULT_FRAME_RESIZE_THICKNESS = 6
 };
+
+/* repair-5-a-5: 贴边方向钳位（非法值用默认 APP_DOCK_RIGHT） */
+static int ClampDockEdge(int edge)
+{
+    if (edge < APP_DOCK_LEFT || edge > APP_DOCK_BOTTOM)
+        return APP_DOCK_RIGHT;
+    return edge;
+}
+
+/* repair-5-a-5: 贴边厚度钳位（200..500） */
+static int ClampDockThickness(int thickness)
+{
+    if (thickness < 200) return 200;
+    if (thickness > 500) return 500;
+    return thickness;
+}
 
 static void App_InitShellStateDefaults(void)
 {
@@ -747,6 +767,36 @@ static void App_EnsureCaretVisible(void)
     App_ClampVerticalScroll();
 }
 
+/* repair-5-a-1: 从持久化状态读取配置并尝试注册 AppBar（仅 EDGE_RESERVED 模式） */
+static void App_TryRegisterAppBarFromState(HWND hwnd)
+{
+    StateData state;
+    StateStore_Load(&state);
+
+    if (state.shell_resident_mode != APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+        return;
+
+    AppDockEdge edge = (AppDockEdge)ClampDockEdge(state.dock_edge);
+    int thickness = ClampDockThickness(state.dock_thickness);
+
+    wchar_t buf[256];
+    swprintf(buf, 256, R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: edge=%d thickness=%d\n",
+             (int)edge, thickness);
+    R5A_WriteLog(buf);
+
+    if (AppBar_Register(hwnd) == 0)
+    {
+        AppBar_SetPosition(hwnd, edge, thickness);
+        g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_EDGE_RESERVED;
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: success\n");
+    }
+    else
+    {
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: AppBar_Register failed, state preserved\n");
+        /* 失败保留 state，由 5b 重试 */
+    }
+}
+
 int App_Run(void)
 {
     return Window_Run();
@@ -836,6 +886,9 @@ int App_Init(HWND hwnd)
         }
     }
 
+    /* repair-5-a-1: 启动时尝试恢复贴边占位 */
+    App_TryRegisterAppBarFromState(hwnd);
+
     App_EnsureCaretVisible();
 
     return 0;
@@ -917,6 +970,9 @@ void App_OnPaint(void)
 
         /* 应用缓存的 button state */
         titlebar_layout.menu_button.state = g_app.menu_button_state;
+
+        /* Shell-5d: 根据 resident_mode 更新指示灯外观 */
+        Titlebar_UpdateStatus(&titlebar_layout.status_indicator, g_app.shell.resident_mode);
 
         Titlebar_Draw(g_app.render, &titlebar_layout);
     }
@@ -1174,8 +1230,12 @@ int App_SubmitShellCommand(AppShellCommand command)
         hMenu = CreatePopupMenu();
         AppendMenuW(hMenu, MF_STRING, 100, L"隐藏");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hMenu, MF_STRING, 102, L"浮动置顶");
-        AppendMenuW(hMenu, MF_STRING, 103, L"贴边占位");
+        AppendMenuW(hMenu, MF_STRING |
+            (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST ? MF_CHECKED : 0),
+            102, L"浮动置顶");
+        AppendMenuW(hMenu, MF_STRING |
+            (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED ? MF_CHECKED : 0),
+            103, L"贴边占位");
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hMenu, MF_STRING, 101, L"关于 DeskNote...");
         cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
@@ -1210,6 +1270,27 @@ int App_SubmitShellCommand(AppShellCommand command)
             }
             else
             {
+                /* repair-5-a-3: 从浮动置顶切到贴边时，先保存 last_floating_* 并取消 topmost */
+                if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+                {
+                    RECT rect;
+                    if (GetWindowRect(g_app.hwnd, &rect))
+                    {
+                        StateData st;
+                        StateStore_Load(&st);
+                        st.last_floating_left   = rect.left;
+                        st.last_floating_top    = rect.top;
+                        st.last_floating_width  = rect.right - rect.left;
+                        st.last_floating_height = rect.bottom - rect.top;
+                        StateStore_Save(&st);
+                        R5A_WriteLog(R5A_LOG_PREFIX L"cmd103: saved last_floating_* from topmost mode\n");
+                    }
+
+                    SetWindowPos(g_app.hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    R5A_WriteLog(R5A_LOG_PREFIX L"cmd103: cancelled topmost before edge_reserved\n");
+                }
+
                 g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_EDGE_RESERVED;
 
                 /* 保存 dock 配置到 state.ini */
@@ -1220,8 +1301,44 @@ int App_SubmitShellCommand(AppShellCommand command)
                 StateStore_Save(&state);
             }
 
-            /* 提交命令给 window.c，由它执行 AppBar_Register/Unregister */
-            App_SubmitShellCommand(APP_SHELL_COMMAND_ENTER_EDGE_RESERVED);
+            /* 同步执行 AppBar 注册/注销，不经过异步命令队列 */
+            HWND hwnd = g_app.hwnd;
+            if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+            {
+                if (!AppBar_IsRegistered(hwnd))
+                {
+                    OutputDebugStringW(R5A_LOG_PREFIX L"cmd103: registering AppBar (sync)\n");
+                    if (AppBar_Register(hwnd) == 0)
+                        AppBar_SetPosition(hwnd, APP_DOCK_RIGHT, 240);
+                }
+            }
+            else
+            {
+                if (AppBar_IsRegistered(hwnd))
+                {
+                    OutputDebugStringW(R5A_LOG_PREFIX L"cmd103: unregistering AppBar (sync)\n");
+                    AppBar_Unregister(hwnd);
+                }
+                /* 退出贴边后把窗口移离边缘，避免下次注册时位置冲突 */
+                {
+                    RECT rc;
+                    GetWindowRect(hwnd, &rc);
+                    int w = rc.right - rc.left;
+                    int h = rc.bottom - rc.top;
+                    int x = rc.left;
+                    int y = rc.top;
+                    SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
+                    int cw = rc.right - rc.left;
+                    int ch = rc.bottom - rc.top;
+                    /* 如果窗口在右边缘或右下角，移到屏幕中央 */
+                    if (x + w >= rc.right - 10)
+                        x = (cw - w) / 2;
+                    if (y + h >= rc.bottom - 10)
+                        y = (ch - h) / 2;
+                    MoveWindow(hwnd, x, y, w, h, TRUE);
+                }
+            }
+            App_UpdateTrayTip(hwnd);  /* Shell-5c: 提示文字同步 resident_mode */
         }
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,
@@ -1349,7 +1466,29 @@ int App_InitTrayIcon(HWND hwnd)
         hIcon = LoadIconW(NULL, IDI_APPLICATION);
     nid.hIcon = hIcon;
 
+    App_UpdateTrayTip(hwnd);  /* Shell-5c: 启动时设置初始提示 */
     return Shell_NotifyIconW(NIM_ADD, &nid) ? 0 : 1;
+}
+
+/* Shell-5c: 更新托盘图标 hover 提示，反映当前 resident_mode */
+void App_UpdateTrayTip(HWND hwnd)
+{
+    NOTIFYICONDATAW nid;
+    memset(&nid, 0, sizeof(nid));
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    nid.uFlags = NIF_TIP;
+
+    AppShellResidentMode mode = App_GetResidentMode();
+    const wchar_t* tip = L"DeskNote";
+    if (mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+        tip = L"DeskNote — 浮动置顶";
+    else if (mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+        tip = L"DeskNote — 贴边占位";
+
+    wcsncpy(nid.szTip, tip, 128);
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 void App_DestroyTrayIcon(HWND hwnd)
@@ -1384,13 +1523,60 @@ void App_SetResidentMode(AppShellResidentMode mode)
 void App_HideToTray(HWND hwnd)
 {
     s_presence_state = SHELL_PRESENCE_HIDDEN_TO_TRAY;
-    ShowWindow(hwnd, SW_HIDE);
 
-    /* Shell-3c_2: 持久化当前 presence 状态 */
     StateData state;
     StateStore_Load(&state);
+
+    /* 隐藏时释放 AppBar 死区，恢复时自动重建（repair-5-c） */
+    if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED &&
+        AppBar_IsRegistered(hwnd))
+    {
+        AppBar_Unregister(hwnd);
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_HideToTray: unregistered AppBar\n");
+    }
+
+    ShowWindow(hwnd, SW_HIDE);
+
     state.presence_state = (int)SHELL_PRESENCE_HIDDEN_TO_TRAY;
     StateStore_Save(&state);
+}
+
+/* repair-5-c: 拖动/大小调整结束时释放 AppBar */
+void App_OnEndDrag(HWND hwnd)
+{
+    if (g_app.shell.resident_mode != APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+        return;
+    if (!AppBar_IsRegistered(hwnd))
+        return;
+
+    StateData state;
+    StateStore_Load(&state);
+
+    if (state.release_on_drag_mode == 1)
+    {
+        RECT rc;
+        GetWindowRect(hwnd, &rc);
+        state.last_floating_left   = rc.left;
+        state.last_floating_top    = rc.top;
+        state.last_floating_width  = rc.right - rc.left;
+        state.last_floating_height = rc.bottom - rc.top;
+        state.shell_resident_mode  = APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST;
+        StateStore_Save(&state);
+        AppBar_Unregister(hwnd);
+        g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST;
+        SetWindowPos(hwnd, HWND_TOPMOST, rc.left, rc.top,
+                     rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER);
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> floating_topmost\n");
+    }
+    else if (state.release_on_drag_mode == 2)
+    {
+        state.shell_resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
+        StateStore_Save(&state);
+        AppBar_Unregister(hwnd);
+        g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> none\n");
+    }
+    App_UpdateTrayTip(hwnd);  /* Shell-5c */
 }
 
 void App_RestoreFromTray(HWND hwnd)
@@ -1405,9 +1591,18 @@ void App_RestoreFromTray(HWND hwnd)
     state.presence_state = (int)SHELL_PRESENCE_VISIBLE_FRONT;
     StateStore_Save(&state);
 
+    /* 如果之前是贴边模式但 AppBar 已被释放，把 resident_mode 切回 NONE 保持状态一致 */
+    if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED &&
+        !AppBar_IsRegistered(hwnd))
+    {
+        g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
+        R5A_WriteLog(R5A_LOG_PREFIX L"App_RestoreFromTray: reset resident_mode to NONE (AppBar not registered)\n");
+    }
+
     /* Shell-4a_1: 恢复 topmost（如果之前是置顶模式）—此处只做判断，不直接调系统 API */
     if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
     {
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
+    App_UpdateTrayTip(hwnd);  /* Shell-5c */
 }

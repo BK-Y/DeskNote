@@ -84,6 +84,8 @@ void App_DestroyTrayIcon(HWND hwnd);
 ShellPresenceState App_GetPresenceState(void);
 void App_HideToTray(HWND hwnd);
 void App_RestoreFromTray(HWND hwnd);
+void App_OnEndDrag(HWND hwnd);
+void App_UpdateTrayTip(HWND hwnd);
 
 /* Shell-4a_1: 常驻模式状态 */
 AppShellResidentMode App_GetResidentMode(void);

@@ -29,4 +29,16 @@ int AppBar_ReRegister(HWND hwnd);
 /* 从 state.ini 读取 dock 配置（Shell-5b） */
 int AppBar_ReadDockConfig(AppDockEdge* out_edge, int* out_thickness);
 
+/* 获取当前 AppBar 贴边方向（用于 WM_APP+2 回调中重协商） */
+AppDockEdge AppBar_GetEdge(void);
+
+/* 获取当前 AppBar 厚度 */
+int AppBar_GetThickness(void);
+
+/* Shell-5b: 标记即将发生的 ABM_SETPOS 由我们自己触发 */
+void AppBar_MarkOwnWorkareaChange(void);
+
+/* Shell-5b: 检查并消费"自己触发"标记。返回 1 表示当前 WM_SETTINGCHANGE 应由我们跳过 */
+int AppBar_ConsumeOwnWorkareaChange(void);
+
 #endif

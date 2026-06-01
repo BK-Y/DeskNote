@@ -120,9 +120,13 @@ int StateStore_Load(StateData* out_state)
     memset(out_state, 0, sizeof(*out_state));
     out_state->version = STATE_STORE_VERSION;
     out_state->use_custom_chrome = 1;
+    out_state->release_on_hide_mode = 1;  /* repair-5-a-4: 默认 remember */
+    out_state->release_on_drag_mode = 1;  /* repair-5-a-4: 默认 to_topmost */
 
     if (StateStore_GetStatePath(state_path, MAX_PATH) != 0)
+    {
         return 1;
+    }
 
     file_handle = CreateFileW(state_path,
                               GENERIC_READ,
@@ -134,7 +138,9 @@ int StateStore_Load(StateData* out_state)
     if (file_handle == INVALID_HANDLE_VALUE)
     {
         if (GetLastError() == ERROR_FILE_NOT_FOUND)
+        {
             return 0;
+        }
         return 1;
     }
 
@@ -251,6 +257,14 @@ int StateStore_Load(StateData* out_state)
         {
             out_state->dock_thickness = _wtoi(line_start + 15);
         }
+        else if (wcsncmp(line_start, L"release_on_hide_mode=", 21) == 0)
+        {
+            out_state->release_on_hide_mode = _wtoi(line_start + 21);
+        }
+        else if (wcsncmp(line_start, L"release_on_drag_mode=", 21) == 0)
+        {
+            out_state->release_on_drag_mode = _wtoi(line_start + 21);
+        }
 
         if (line_end == parse_cursor)
             break;
@@ -291,7 +305,9 @@ int StateStore_Save(const StateData* state)
                                   L"last_floating_width=%d\r\n"
                                   L"last_floating_height=%d\r\n"
                                   L"dock_edge=%d\r\n"
-                                  L"dock_thickness=%d\r\n",
+                                  L"dock_thickness=%d\r\n"
+                                  L"release_on_hide_mode=%d\r\n"
+                                  L"release_on_drag_mode=%d\r\n",
                                   STATE_STORE_VERSION,
                                   state->has_last_file ? state->last_file : L"",
                                   state->use_custom_chrome,
@@ -304,7 +320,9 @@ int StateStore_Save(const StateData* state)
                                   state->last_floating_width,
                                   state->last_floating_height,
                                   state->dock_edge,
-                                  state->dock_thickness);
+                                  state->dock_thickness,
+                                  state->release_on_hide_mode,
+                                  state->release_on_drag_mode);
     if (written_characters < 0)
         return 1;
 

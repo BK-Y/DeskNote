@@ -14,6 +14,7 @@ typedef struct {
     RenderRect titlebar_rect;          /* 标题栏背景区域（整行宽度，titlebar_height 高度）*/
     RenderRect title_text_rect;        /* 标题文本显示区域 */
     Button menu_button;                /* 菜单按钮（替换旧 close_button + minimize_button）*/
+    Button status_indicator;           /* Shell-5d: 状态指示灯（仅视觉，不响应点击）*/
     int window_width;                  /* 窗口客户区宽度（供边框绘制使用）*/
     int window_height;                 /* 窗口客户区高度（供边框绘制使用）*/
 } TitlebarLayout;
@@ -44,8 +45,14 @@ TitlebarLayout Titlebar_CalculateLayout(int window_width,
                                         unsigned int titlebar_command_groups);
 
 /*
- * 绘制标题栏（背景、标题文本、菜单按钮）和窗口边框。
+ * 绘制标题栏（背景、标题文本、菜单按钮、状态指示灯）和窗口边框。
  */
 void Titlebar_Draw(RenderContext* ctx, const TitlebarLayout* layout);
+
+/*
+ * Shell-5d: 根据 resident_mode 刷新状态指示灯的外观。
+ * 在 App_OnPaint 中、Titlebar_CalculateLayout 之后、Titlebar_Draw 之前调用。
+ */
+void Titlebar_UpdateStatus(Button* indicator, int mode);
 
 #endif /* DESKNOTE_TITLEBAR_H */

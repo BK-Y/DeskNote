@@ -1,5 +1,6 @@
 #include "titlebar.h"
 
+#include "../app/app.h"
 #include <string.h>
 
 /*
@@ -68,6 +69,13 @@ TitlebarLayout Titlebar_CalculateLayout(int window_width,
     layout.menu_button.label = L"\u2630";  /* Shell-2a_repair-3: ☰ 汉堡图标 */
     layout.menu_button.label_color = (RenderColor){ 140, 120, 80, 255 };  /* 深棕，与黄底搭配 */
 
+    /* Shell-5d: 状态指示灯，菜单按钮左侧 8px */
+    Button_Init(&layout.status_indicator,
+                current_x - 8 - 20, titlebar_y + (titlebar_height - 20) / 2,
+                20, 20);
+    layout.status_indicator.is_visible = 0;
+    layout.status_indicator.is_enabled = 0;
+
     return layout;
 }
 
@@ -118,6 +126,20 @@ void Titlebar_Draw(RenderContext* ctx, const TitlebarLayout* layout)
     /* ========== 菜单按钮 ========== */
     Button_Draw(ctx, &layout->menu_button);
 
+    /* ========== 状态指示灯 ========== */
+    if (layout->status_indicator.is_visible)
+    {
+        Render_FillRect(ctx, layout->status_indicator.rect,
+                        layout->status_indicator.bg_color);
+        if (layout->status_indicator.label &&
+            layout->status_indicator.label[0] != L'\0')
+        {
+            Render_DrawTextCentered(ctx, layout->status_indicator.label,
+                                    layout->status_indicator.rect,
+                                    layout->status_indicator.label_color);
+        }
+    }
+
     /* ========== 左边框 ========== */
     border_rect.x = 0;
     border_rect.y = 0;
@@ -138,4 +160,32 @@ void Titlebar_Draw(RenderContext* ctx, const TitlebarLayout* layout)
     border_rect.width = layout->window_width;
     border_rect.height = 1;
     Render_FillRect(ctx, border_rect, TITLEBAR_COLOR_BORDER);
+}
+
+/* Shell-5d */
+void Titlebar_UpdateStatus(Button* indicator, int mode)
+{
+    if (indicator == NULL)
+        return;
+
+    switch ((AppShellResidentMode)mode)
+    {
+    case APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST:
+        indicator->bg_color = (RenderColor){ 255, 200, 0, 255 };
+        indicator->label_color = (RenderColor){ 0, 0, 0, 255 };
+        indicator->label = L"\u25CF";
+        indicator->is_visible = 1;
+        break;
+    case APP_SHELL_RESIDENT_MODE_EDGE_RESERVED:
+        indicator->bg_color = (RenderColor){ 0, 150, 255, 255 };
+        indicator->label_color = (RenderColor){ 255, 255, 255, 255 };
+        indicator->label = L"\u25CF";
+        indicator->is_visible = 1;
+        break;
+    default:
+        indicator->bg_color = (RenderColor){ 0, 0, 0, 0 };
+        indicator->label = L"";
+        indicator->is_visible = 0;
+        break;
+    }
 }

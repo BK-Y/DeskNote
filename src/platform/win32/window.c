@@ -12,8 +12,18 @@ enum {
     WINDOW_AUTOSAVE_TIMER_INTERVAL_MS = 250
 };
 
+/* Shell-5b: TaskbarCreated 消息 ID（Explorer 重启通知） */
+static UINT g_msgTaskbarCreated = 0;
+
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    /* Shell-5b: Explorer 重启后重注册 AppBar */
+    if (msg == g_msgTaskbarCreated && g_msgTaskbarCreated != 0)
+    {
+        AppBar_ReRegister(hwnd);
+        return 0;
+    }
+
     switch (msg)
     {
     case WM_NCHITTEST:
@@ -91,12 +101,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
                             App_SetResidentMode(APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST);
                         }
-                        break;
-                    case APP_SHELL_COMMAND_ENTER_EDGE_RESERVED:
-                        if (AppBar_IsRegistered(hwnd))
-                            AppBar_Unregister(hwnd);
-                        else if (AppBar_Register(hwnd) == 0)
-                            AppBar_SetPosition(hwnd, APP_DOCK_RIGHT, 240);
+                        App_UpdateTrayTip(hwnd);  /* Shell-5c */
                         break;
                     default:
                         break;
@@ -110,6 +115,41 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_SIZE:
         (void)App_OnResize((unsigned int)LOWORD(lParam), (unsigned int)HIWORD(lParam));
+        return 0;
+
+    /* Shell-5b: 分辨率变化后重新设置 AppBar */
+    case WM_DISPLAYCHANGE:
+        AppBar_ReRegister(hwnd);
+        return 0;
+
+    /* Shell-5b: 任务栏/工作区变化 — 根据标记判断是否为自己触发 */
+    case WM_SETTINGCHANGE:
+        if (wParam == SPI_SETWORKAREA)
+        {
+            if (AppBar_ConsumeOwnWorkareaChange())
+            {
+                /* 我们自己触发的，跳过 */
+                return 0;
+            }
+            /* 外部变化，重新协商 */
+            if (AppBar_IsRegistered(hwnd))
+                AppBar_ReRegister(hwnd);
+        }
+        return 0;
+
+    /* Shell-5b: AppBar 系统回调 */
+    case WM_APP + 2:
+        switch (wParam)
+        {
+        case ABN_FULLSCREENAPP:
+            AppBar_ReRegister(hwnd);
+            break;
+        }
+        return 0;
+
+    /* repair-5-c: 拖动/缩放结束时释放 AppBar */
+    case WM_EXITSIZEMOVE:
+        App_OnEndDrag(hwnd);
         return 0;
 
     /* Shell-3a_2: 托盘消息 — 只做翻译，不做执行 */
@@ -140,6 +180,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_DESTROY:
         KillTimer(hwnd, WINDOW_AUTOSAVE_TIMER_ID);
+        AppBar_Unregister(hwnd);          /* Shell-5b: 退出时确保 AppBar 已注销 */
         App_DestroyTrayIcon(hwnd);
         App_Shutdown();
         Platform_Nonclient_Shutdown(hwnd);
@@ -209,6 +250,9 @@ int Window_Run(void)
 
     /* Shell-3a_1: 初始化托盘图标（启动即有，无需条件） */
     (void)App_InitTrayIcon(hwnd);
+
+    /* Shell-5b: 注册 TaskbarCreated 消息，Explorer 重启后自动重注册 AppBar */
+    g_msgTaskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
 
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
