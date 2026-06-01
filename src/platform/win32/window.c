@@ -93,18 +93,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                         }
                         break;
                     case APP_SHELL_COMMAND_ENTER_EDGE_RESERVED:
-                        /* Shell-5a-repair-4b: 只调 AppBar API，不碰 app 状态 */
-                        /* 从 state.ini 读取动态厚度 */
                         if (AppBar_IsRegistered(hwnd))
                             AppBar_Unregister(hwnd);
-                        else
-                        {
-                            AppDockEdge edge = APP_DOCK_RIGHT;
-                            int thickness = 240;  /* 默认兜底 */
-                            AppBar_ReadDockConfig(&edge, &thickness);
-                            if (AppBar_Register(hwnd, edge, thickness) == 0)
-                                AppBar_SetPosition(hwnd, edge, thickness);
-                        }
+                        else if (AppBar_Register(hwnd) == 0)
+                            AppBar_SetPosition(hwnd, APP_DOCK_RIGHT, 240);
                         break;
                     default:
                         break;

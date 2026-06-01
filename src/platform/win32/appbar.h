@@ -11,8 +11,8 @@ typedef enum {
     APP_DOCK_BOTTOM = 3   /* ABE_BOTTOM */
 } AppDockEdge;
 
-/* 注册当前窗口为 AppBar，返回 0 成功（edge 和 thickness 在 ABM_NEW 前传入，避免空矩形注册） */
-int AppBar_Register(HWND hwnd, AppDockEdge edge, int thickness);
+/* 注册当前窗口为 AppBar，返回 0 成功 */
+int AppBar_Register(HWND hwnd);
 
 /* 注销 AppBar，返回 0 成功 */
 int AppBar_Unregister(HWND hwnd);

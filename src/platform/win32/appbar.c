@@ -2,34 +2,25 @@
 #include "appbar.h"
 #include "../../storage/state_store.h"
 
+#include <wchar.h>      /* diag: swprintf */
+#include <debugapi.h>   /* diag: OutputDebugStringW */
+
 typedef struct {
     APPBARDATA data;
     int registered;
-    RECT initial_workarea;  /* Shell-5a-repair-4d: Register 时保存的初始工作区 */
 } AppBarState;
 
 static AppBarState s_appbar = {0};
 
-int AppBar_Register(HWND hwnd, AppDockEdge edge, int thickness)
+int AppBar_Register(HWND hwnd)
 {
-    RECT rc;
-
     if (s_appbar.registered)
         return 0;
-
-    /* Shell-5a-repair-4b: ABM_NEW 前设好 uEdge 和 rc，一次到位 */
-    SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
-    s_appbar.initial_workarea = rc;  /* Shell-5a-repair-4d: 保存原始工作区，供 SetPosition 复用 */
 
     memset(&s_appbar.data, 0, sizeof(s_appbar.data));
     s_appbar.data.cbSize = sizeof(s_appbar.data);
     s_appbar.data.hWnd = hwnd;
     s_appbar.data.uCallbackMessage = (UINT)(WM_APP + 2);
-    s_appbar.data.uEdge = (UINT)edge;
-    s_appbar.data.rc = rc;
-
-    if (edge == APP_DOCK_RIGHT)
-        s_appbar.data.rc.left = rc.right - thickness;
 
     if (!SHAppBarMessage(ABM_NEW, &s_appbar.data))
         return 1;
@@ -51,8 +42,16 @@ int AppBar_Unregister(HWND hwnd)
 
 int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
 {
-    /* Shell-5a-repair-4d: 使用 Register 时保存的原始工作区，不再重读 SPI_GETWORKAREA */
-    RECT rc = s_appbar.initial_workarea;
+    RECT rc;
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
+
+    /* diag: 工作区宽度 */
+    {
+        wchar_t buf[128];
+        swprintf(buf, 128, L"[s5a-diag] workarea_w=%d thickness=%d\n",
+                 rc.right - rc.left, thickness);
+        OutputDebugStringW(buf);
+    }
 
     s_appbar.data.uEdge = (UINT)edge;
     s_appbar.data.rc = rc;
@@ -75,6 +74,16 @@ int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness)
 
     SHAppBarMessage(ABM_QUERYPOS, &s_appbar.data);
     SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
+
+    /* diag: SETPOS 后的 AppBar 矩形 */
+    {
+        wchar_t buf[128];
+        swprintf(buf, 128, L"[s5a-diag] setpos_rc=(%d,%d,%d,%d) w=%d\n",
+                 s_appbar.data.rc.left, s_appbar.data.rc.top,
+                 s_appbar.data.rc.right, s_appbar.data.rc.bottom,
+                 s_appbar.data.rc.right - s_appbar.data.rc.left);
+        OutputDebugStringW(buf);
+    }
 
     MoveWindow(hwnd,
                s_appbar.data.rc.left,
@@ -104,7 +113,7 @@ int AppBar_ReRegister(HWND hwnd)
     thickness = s_appbar.data.rc.right - s_appbar.data.rc.left;
 
     s_appbar.registered = 0;
-    if (AppBar_Register(hwnd, edge, thickness) != 0)
+    if (AppBar_Register(hwnd) != 0)
         return 1;
 
     return AppBar_SetPosition(hwnd, edge, thickness);
