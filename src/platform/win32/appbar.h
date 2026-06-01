@@ -3,42 +3,76 @@
 
 #include <windows.h>
 
-/* AppBar 贴边方向（必须与 Windows ABE_* 常量值一致） */
+/**
+ * @defgroup platform_win32 Win32 Platform
+ * Win32 window management, message loop, non-client handling, and AppBar.
+ * @{
+ */
+
+/**
+ * @defgroup appbar AppBar
+ * Windows AppBar (application desktop toolbar) registration and positioning.
+ * Each function is safe to call even when the AppBar is not registered
+ * (they check the internal registration state first).
+ * @{
+ */
+
+/** @brief AppBar docking edge (matches Windows ABE_* constants). */
 typedef enum {
-    APP_DOCK_LEFT   = 0,  /* ABE_LEFT   */
-    APP_DOCK_TOP    = 1,  /* ABE_TOP    */
-    APP_DOCK_RIGHT  = 2,  /* ABE_RIGHT  */
-    APP_DOCK_BOTTOM = 3   /* ABE_BOTTOM */
+    APP_DOCK_LEFT   = 0,  /**< Dock to left edge   (ABE_LEFT). */
+    APP_DOCK_TOP    = 1,  /**< Dock to top edge    (ABE_TOP). */
+    APP_DOCK_RIGHT  = 2,  /**< Dock to right edge  (ABE_RIGHT). */
+    APP_DOCK_BOTTOM = 3   /**< Dock to bottom edge (ABE_BOTTOM). */
 } AppDockEdge;
 
-/* 注册当前窗口为 AppBar，返回 0 成功 */
+/** @brief Register the window as an AppBar.
+ *  @param hwnd Window handle.
+ *  @return 0 on success, 1 if SHAppBarMessage(ABM_NEW) fails. */
 int AppBar_Register(HWND hwnd);
 
-/* 注销 AppBar，返回 0 成功 */
+/** @brief Unregister the AppBar and release the reserved screen area.
+ *  @param hwnd Window handle.
+ *  @return 0 always. */
 int AppBar_Unregister(HWND hwnd);
 
-/* 设置贴边位置，传入 edge 和 thickness */
+/** @brief Set the AppBar position and reserve screen space.
+ *  @param hwnd    Window handle.
+ *  @param edge    Edge to dock to.
+ *  @param thickness  Reservation thickness in pixels.
+ *  @return 0 always. */
 int AppBar_SetPosition(HWND hwnd, AppDockEdge edge, int thickness);
 
-/* 获取当前 AppBar 是否已注册 */
+/** @brief Check whether the AppBar is currently registered.
+ *  @return 1 if registered, 0 otherwise. */
 int AppBar_IsRegistered(HWND hwnd);
 
-/* 重注册 AppBar（Shell-5b），内部自行判断是否需要恢复 */
+/** @brief Re-register the AppBar (unregister then register + set position).
+ *  @return 0 on success, 1 if re-registration fails. */
 int AppBar_ReRegister(HWND hwnd);
 
-/* 从 state.ini 读取 dock 配置（Shell-5b） */
+/** @brief Read dock configuration from the persisted state file.
+ *  @param[out] out_edge      Dock edge.
+ *  @param[out] out_thickness  Dock thickness.
+ *  @return 0 always. */
 int AppBar_ReadDockConfig(AppDockEdge* out_edge, int* out_thickness);
 
-/* 获取当前 AppBar 贴边方向（用于 WM_APP+2 回调中重协商） */
+/** @brief Get the current AppBar docking edge.
+ *  @return Current edge (APP_DOCK_RIGHT if not registered). */
 AppDockEdge AppBar_GetEdge(void);
 
-/* 获取当前 AppBar 厚度 */
+/** @brief Get the current AppBar reservation thickness.
+ *  @return Thickness in pixels (0 if not registered). */
 int AppBar_GetThickness(void);
 
-/* Shell-5b: 标记即将发生的 ABM_SETPOS 由我们自己触发 */
+/** @brief Mark the next work-area change as self-triggered.
+ *  Used by AppBar_SetPosition before ABM_SETPOS to prevent
+ *  feedback loops in WM_SETTINGCHANGE. */
 void AppBar_MarkOwnWorkareaChange(void);
 
-/* Shell-5b: 检查并消费"自己触发"标记。返回 1 表示当前 WM_SETTINGCHANGE 应由我们跳过 */
+/** @brief Check and consume the self-triggered work-area change flag.
+ *  @return 1 if the current WM_SETTINGCHANGE should be skipped. */
 int AppBar_ConsumeOwnWorkareaChange(void);
 
-#endif
+/** @} */
+/** @} */
+#endif /* DESKNOTE_APPBAR_H */

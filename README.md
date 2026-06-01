@@ -129,6 +129,7 @@ src/
 - `docs\readme.md`：`docs\` 目录维护规则
 - `.ai\plan.md`：当前执行计划入口
 - `.ai\standards\phase-planning.md`：阶段读取 / 制定标准
+- `docs\api\html\index.html`：API 文档（Doxygen 生成）
 
 > `docs\plan\` 下的旧计划文档和 `docs\design\PL-*.md` 目前保留为历史材料，不是当前执行依据。
 

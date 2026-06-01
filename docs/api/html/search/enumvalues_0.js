@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['app_5fdock_5fbottom_0',['APP_DOCK_BOTTOM',['../group__appbar.html#ggafa6943b4b61553952fb1b1ab6d60e23ba84df805d2bef053b691d4d59b9bb1f60',1,'appbar.h']]],
+  ['app_5fdock_5fleft_1',['APP_DOCK_LEFT',['../group__appbar.html#ggafa6943b4b61553952fb1b1ab6d60e23ba0c2765ee6ca9911a2967c38934cc4e07',1,'appbar.h']]],
+  ['app_5fdock_5fright_2',['APP_DOCK_RIGHT',['../group__appbar.html#ggafa6943b4b61553952fb1b1ab6d60e23ba180c503cbbdb28fd1a04947482404f75',1,'appbar.h']]],
+  ['app_5fdock_5ftop_3',['APP_DOCK_TOP',['../group__appbar.html#ggafa6943b4b61553952fb1b1ab6d60e23ba2bc55881eabdb85e7fa72397256cbc1b',1,'appbar.h']]],
+  ['app_5fshell_5fcommand_5fenter_5fedge_5freserved_4',['APP_SHELL_COMMAND_ENTER_EDGE_RESERVED',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfaf1d19d33b8099cd25eae3e95b1039646',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fhide_5fto_5ftray_5',['APP_SHELL_COMMAND_HIDE_TO_TRAY',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfaa01cc88918092b84cdc121689593c0da',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fnone_6',['APP_SHELL_COMMAND_NONE',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfaba769af1bb8ce0c2bb01b65dca0ba3d0',1,'app.h']]],
+  ['app_5fshell_5fcommand_5frestore_5ffrom_5ftray_7',['APP_SHELL_COMMAND_RESTORE_FROM_TRAY',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfac2fb2237a9982e88072e4ac935d1a67d',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fshow_5fmenu_8',['APP_SHELL_COMMAND_SHOW_MENU',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfae97b22687e3a7191c82b1875989925a9',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fshow_5ftray_5fmenu_9',['APP_SHELL_COMMAND_SHOW_TRAY_MENU',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfa268ce9433481cbcf492dd69464e68bd2',1,'app.h']]],
+  ['app_5fshell_5fcommand_5ftoggle_5ffloating_5ftopmost_10',['APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfad8616eaf0f5ebf0f53ad43e9678bd957',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fwindow_5fclose_11',['APP_SHELL_COMMAND_WINDOW_CLOSE',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfad6d97167b8c985bb1176574992357146',1,'app.h']]],
+  ['app_5fshell_5fcommand_5fwindow_5frestore_12',['APP_SHELL_COMMAND_WINDOW_RESTORE',['../group__app.html#gga2ffffc526b8b86a91049de5a39d0e2cfae3ce4471b97011553003755d0b630e41',1,'app.h']]],
+  ['app_5fshell_5fresident_5fmode_5fedge_5freserved_13',['APP_SHELL_RESIDENT_MODE_EDGE_RESERVED',['../group__app.html#gga75620115deb58cc7d9bcb0b224583ff1a94a1331fccd1560d1d23988c828ea406',1,'app.h']]],
+  ['app_5fshell_5fresident_5fmode_5ffloating_5ftopmost_14',['APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST',['../group__app.html#gga75620115deb58cc7d9bcb0b224583ff1a4742eed4bd80a468905c63eab337822e',1,'app.h']]],
+  ['app_5fshell_5fresident_5fmode_5fnone_15',['APP_SHELL_RESIDENT_MODE_NONE',['../group__app.html#gga75620115deb58cc7d9bcb0b224583ff1a6c980fbe0fd85aa2a42d642d11e57ed0',1,'app.h']]],
+  ['app_5ftitlebar_5fcommand_5fgroup_5fbackground_5factions_16',['APP_TITLEBAR_COMMAND_GROUP_BACKGROUND_ACTIONS',['../group__app.html#ggaea82d6c0c0382e55b37b0ae5ad42d918a5403f760e18d695af2ffdf6c69d5f524',1,'app.h']]],
+  ['app_5ftitlebar_5fcommand_5fgroup_5fshell_5fmodes_17',['APP_TITLEBAR_COMMAND_GROUP_SHELL_MODES',['../group__app.html#ggaea82d6c0c0382e55b37b0ae5ad42d918a9dd9d7fbb748c0788e499e66e8e61068',1,'app.h']]],
+  ['app_5ftitlebar_5fcommand_5fgroup_5fwindow_5fcontrols_18',['APP_TITLEBAR_COMMAND_GROUP_WINDOW_CONTROLS',['../group__app.html#ggaea82d6c0c0382e55b37b0ae5ad42d918a48f862907e81e68c1a52303f366374fc',1,'app.h']]]
+];
