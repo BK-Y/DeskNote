@@ -107,7 +107,7 @@ AppShellResidentMode App_GetResidentMode(void);
 void App_SetResidentMode(AppShellResidentMode mode);
 
 /** @brief Get current presence state. */
-int App_GetPresenceState(void);
+ShellPresenceState App_GetPresenceState(void);
 
 /** @brief Hide window to system tray. */
 void App_HideToTray(HWND hwnd);
