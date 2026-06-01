@@ -222,7 +222,10 @@ void EditorView_Draw(RenderContext* ctx,
                      int cursor,
                      int vertical_scroll,
                      int window_width,
-                     int window_height)
+                     int window_height,
+                     int sel_anchor,
+                     int sel_active,
+                     int has_selection)
 {
     EditorViewLayout layout;
     const wchar_t* text;
@@ -248,6 +251,28 @@ void EditorView_Draw(RenderContext* ctx,
     {
         draw_rect = layout.text_rect;
         draw_rect.y -= vertical_scroll;
+
+        /* 选区高亮：在文本下方绘制半透明蓝色背景 */
+        if (has_selection && sel_anchor != sel_active)
+        {
+            int sel_start = sel_anchor < sel_active ? sel_anchor : sel_active;
+            int sel_end   = sel_anchor < sel_active ? sel_active : sel_anchor;
+            RenderTextPosition start_pos, end_pos;
+            if (Render_HitTestTextPosition(ctx, text, length, draw_rect,
+                                           sel_start, &start_pos) == 0 &&
+                Render_HitTestTextPosition(ctx, text, length, draw_rect,
+                                           sel_end, &end_pos) == 0)
+            {
+                RenderRect sel_rect;
+                sel_rect.x = start_pos.x;
+                sel_rect.y = start_pos.y;
+                sel_rect.width = end_pos.x - start_pos.x;
+                sel_rect.height = start_pos.height > 0 ? start_pos.height : 18;
+                if (sel_rect.width < 0) sel_rect.width = 0;
+                Render_FillRect(ctx, sel_rect, (RenderColor){ 150, 200, 255, 100 });
+            }
+        }
+
         Render_PushClip(ctx, layout.text_rect);
         Render_DrawText(ctx,
                         text,

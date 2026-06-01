@@ -36,7 +36,9 @@ typedef struct {
     int save_in_progress;
     wchar_t current_file_path[MAX_PATH];
     AppShellState shell;
-    ButtonState menu_button_state;       /* 缓存菜单按钮 state，避免每次重绘时丢失 hover/pressed */
+    ButtonState menu_button_state;       /* 缓存菜单按钮 state */
+    int mouse_down;                       /* 鼠标左键按下状态（用于拖拽选择）*/
+    int drag_anchor;                      /* 拖拽选择起点偏移 */
 } AppState;
 
 typedef struct {
@@ -841,6 +843,7 @@ int App_Init(HWND hwnd)
     g_app.save_in_progress = 0;
     g_app.current_file_path[0] = L'\0';
     g_app.menu_button_state = BUTTON_STATE_NORMAL;
+    g_app.mouse_down = 0;
     App_InitShellStateDefaults();
 
     if (App_LoadInitialDocument() != 0)
@@ -982,7 +985,10 @@ void App_OnPaint(void)
                     Editor_GetCursor(&g_app.editor),
                     g_app.vertical_scroll,
                     (int)width,
-                    (int)height);
+                    (int)height,
+                    Editor_GetSelectionAnchor(&g_app.editor),
+                    Editor_GetSelectionActive(&g_app.editor),
+                    Editor_HasSelection(&g_app.editor));
     (void)Render_EndFrame(g_app.render);
     App_UpdateInputCaret();
 }
@@ -1004,6 +1010,24 @@ void App_OnMouseMove(int x, int y)
             g_app.menu_button_state = BUTTON_STATE_HOVER;
         else
             g_app.menu_button_state = BUTTON_STATE_NORMAL;
+    }
+    
+    /* 拖拽选择：鼠标按下时在编辑区移动 */
+    if (g_app.mouse_down && g_app.editor_ready)
+    {
+        unsigned int sel_w, sel_h;
+        int sel_cursor;
+        if (App_GetClientSize(&sel_w, &sel_h) == 0 &&
+            EditorView_HitTestCursor(g_app.render,
+                                     Editor_GetDocument(&g_app.editor),
+                                     (int)sel_w,
+                                     (int)sel_h,
+                                     g_app.vertical_scroll,
+                                     x, y,
+                                     &sel_cursor) == 0)
+        {
+            Editor_SetSelection(&g_app.editor, g_app.drag_anchor, sel_cursor);
+        }
     }
 
     App_RequestRefresh();
@@ -1128,9 +1152,53 @@ void App_OnLeftButtonDown(int x, int y)
 
     if (App_ResultNeedsRefresh(result))
     {
+        g_app.mouse_down = 1;
+        g_app.drag_anchor = cursor;
         App_EnsureCaretVisible();
         App_RequestRefresh();
     }
+}
+
+/* 鼠标左键释放 — 结束拖拽选择 */
+void App_OnLeftButtonUp(int x, int y)
+{
+    (void)x;
+    (void)y;
+    g_app.mouse_down = 0;
+}
+
+/* 鼠标左键双击 — 选中当前词 */
+void App_OnLeftButtonDoubleClick(int x, int y)
+{
+    unsigned int dbl_width, dbl_height;
+    int dbl_cursor;
+
+    if (!g_app.editor_ready || g_app.hwnd == NULL || g_app.render == NULL)
+        return;
+    if (App_GetClientSize(&dbl_width, &dbl_height) != 0)
+        return;
+
+    if (EditorView_HitTestCursor(g_app.render,
+                                 Editor_GetDocument(&g_app.editor),
+                                 (int)dbl_width,
+                                 (int)dbl_height,
+                                 g_app.vertical_scroll,
+                                 x, y,
+                                 &dbl_cursor) != 0)
+    {
+        return;
+    }
+
+    Editor_SetCursor(&g_app.editor, dbl_cursor);
+    {
+        int wstart, wend;
+        Editor_GetWordBoundary(&g_app.editor, &wstart, &wend);
+        if (wstart != wend)
+            Editor_SetSelection(&g_app.editor, wstart, wend);
+    }
+    g_app.mouse_down = 0;
+    App_EnsureCaretVisible();
+    App_RequestRefresh();
 }
 
 void App_OnMouseWheel(int delta)

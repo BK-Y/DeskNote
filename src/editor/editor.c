@@ -17,6 +17,9 @@ int Editor_Init(Editor* editor)
     editor->cursor = 0;
     editor->preferred_x = 0;
     editor->has_preferred_x = 0;
+    editor->sel_anchor = 0;
+    editor->sel_active = 0;
+    editor->has_selection = 0;
     return Document_Init(&editor->document);
 }
 
@@ -29,6 +32,9 @@ void Editor_Free(Editor* editor)
     editor->cursor = 0;
     editor->preferred_x = 0;
     editor->has_preferred_x = 0;
+    editor->sel_anchor = 0;
+    editor->sel_active = 0;
+    editor->has_selection = 0;
 }
 
 static EditorResult Editor_MoveCursorHorizontal(Editor* editor, int delta)
@@ -91,6 +97,9 @@ EditorResult Editor_HandleChar(Editor* editor, wchar_t ch)
     if (editor == NULL)
         return EDITOR_RESULT_ERROR;
 
+    if (editor->has_selection)
+        Editor_ClearSelection(editor);  /* 有选区时先清除再插入 */
+
     if (Document_InsertChar(&editor->document, editor->cursor, ch) != 0)
         return EDITOR_RESULT_ERROR;
 
@@ -117,6 +126,11 @@ EditorResult Editor_HandleKey(Editor* editor, EditorKey key)
         return EDITOR_RESULT_ERROR;
 
     case EDITOR_KEY_BACKSPACE:
+        if (editor->has_selection)
+        {
+            Editor_ClearSelection(editor);
+            return EDITOR_RESULT_TEXT_CHANGED;
+        }
         if (editor->cursor <= 0)
             return EDITOR_RESULT_UNCHANGED;
         if (Document_DeleteChar(&editor->document, editor->cursor - 1) != 0)
@@ -182,4 +196,85 @@ int Editor_GetCursor(const Editor* editor)
         return 0;
 
     return editor->cursor;
+}
+
+/* === selection === */
+
+void Editor_SetSelection(Editor* editor, int anchor, int active)
+{
+    if (editor == NULL)
+        return;
+    editor->sel_anchor = anchor;
+    editor->sel_active = active;
+    editor->has_selection = 1;
+    editor->cursor = active;
+}
+
+void Editor_ClearSelection(Editor* editor)
+{
+    if (editor == NULL)
+        return;
+    editor->sel_anchor = 0;
+    editor->sel_active = 0;
+    editor->has_selection = 0;
+}
+
+int Editor_GetSelectionAnchor(const Editor* editor)
+{
+    return editor ? editor->sel_anchor : 0;
+}
+
+int Editor_GetSelectionActive(const Editor* editor)
+{
+    return editor ? editor->sel_active : 0;
+}
+
+int Editor_HasSelection(const Editor* editor)
+{
+    return editor ? editor->has_selection : 0;
+}
+
+/* === word boundary === */
+
+static int IsWordChar(wchar_t ch)
+{
+    return (ch >= L'a' && ch <= L'z') ||
+           (ch >= L'A' && ch <= L'Z') ||
+           (ch >= L'0' && ch <= L'9') ||
+           ch == L'_';
+}
+
+void Editor_GetWordBoundary(const Editor* editor, int* out_start, int* out_end)
+{
+    const wchar_t* text;
+    int length;
+    int cursor;
+
+    if (editor == NULL || out_start == NULL || out_end == NULL)
+        return;
+
+    text = Document_GetText(&editor->document);
+    length = Document_GetLength(&editor->document);
+    cursor = editor->cursor;
+
+    /* clamp */
+    if (cursor < 0) cursor = 0;
+    if (cursor > length) cursor = length;
+
+    /* search backward */
+    *out_start = cursor;
+    while (*out_start > 0 && IsWordChar(text[*out_start - 1]))
+        (*out_start)--;
+
+    /* search forward */
+    *out_end = cursor;
+    while (*out_end < length && IsWordChar(text[*out_end]))
+        (*out_end)++;
+
+    /* if cursor is not on a word, no selection */
+    if (*out_start == *out_end)
+    {
+        *out_start = cursor;
+        *out_end = cursor;
+    }
 }

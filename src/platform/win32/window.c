@@ -71,6 +71,14 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         App_OnLeftButtonDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         return 0;
 
+    case WM_LBUTTONUP:
+        App_OnLeftButtonUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        return 0;
+
+    case WM_LBUTTONDBLCLK:
+        App_OnLeftButtonDoubleClick(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        return 0;
+
     case WM_MOUSEWHEEL:
         App_OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
         return 0;

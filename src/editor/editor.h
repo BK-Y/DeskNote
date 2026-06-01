@@ -50,6 +50,9 @@ typedef struct {
     int cursor;
     int preferred_x;
     int has_preferred_x;
+    int sel_anchor;          /* 选区起点（不变端）*/
+    int sel_active;          /* 选区终点（活动端）*/
+    int has_selection;       /* 是否处于选中状态 */
 } Editor;
 
 int Editor_Init(Editor* editor);
@@ -65,5 +68,13 @@ EditorResult Editor_MoveCursorVertical(Editor* editor,
 
 const Document* Editor_GetDocument(const Editor* editor);
 int Editor_GetCursor(const Editor* editor);
+
+/* selection */
+void Editor_SetSelection(Editor* editor, int anchor, int active);
+void Editor_ClearSelection(Editor* editor);
+int Editor_GetSelectionAnchor(const Editor* editor);
+int Editor_GetSelectionActive(const Editor* editor);
+int Editor_HasSelection(const Editor* editor);
+void Editor_GetWordBoundary(const Editor* editor, int* out_start, int* out_end);
 
 #endif

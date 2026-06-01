@@ -44,7 +44,10 @@ void EditorView_Draw(RenderContext* ctx,
                      int cursor,
                      int vertical_scroll,
                      int window_width,
-                     int window_height);
+                     int window_height,
+                     int sel_anchor,
+                     int sel_active,
+                     int has_selection);
 
 /*
  * 计算编辑区当前光标的像素矩形。

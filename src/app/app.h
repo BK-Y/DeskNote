@@ -155,6 +155,8 @@ void App_OnKeyDown(unsigned int key);
 
 /** @brief Handle left mouse button down for hit testing. */
 void App_OnLeftButtonDown(int x, int y);
+void App_OnLeftButtonUp(int x, int y);
+void App_OnLeftButtonDoubleClick(int x, int y);
 
 /** @brief Handle mouse move (for hover states). */
 void App_OnMouseMove(int x, int y);
