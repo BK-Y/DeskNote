@@ -1070,6 +1070,93 @@ void App_OnKeyDown(unsigned int key)
         return;
 
     result = EDITOR_RESULT_UNCHANGED;
+
+    /* Ctrl+C/V/X — 在 switch(VK_*) 之前处理，因为它们是字符键 */
+    if (GetKeyState(VK_CONTROL) < 0)
+    {
+        switch (key)
+        {
+        case 'C':
+        {
+            if (Editor_HasSelection(&g_app.editor))
+            {
+                int s = Editor_GetSelectionAnchor(&g_app.editor);
+                int e = Editor_GetSelectionActive(&g_app.editor);
+                if (s > e) { int t = s; s = e; e = t; }
+                int len = e - s;
+                if (len > 0)
+                {
+                    const wchar_t* txt = Document_GetText(Editor_GetDocument(&g_app.editor));
+                    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(wchar_t));
+                    if (hMem)
+                    {
+                        wchar_t* dst = GlobalLock(hMem);
+                        wcsncpy(dst, txt + s, len);
+                        dst[len] = L'\0';
+                        GlobalUnlock(hMem);
+                        if (OpenClipboard(g_app.hwnd))
+                        {
+                            EmptyClipboard();
+                            SetClipboardData(CF_UNICODETEXT, hMem);
+                            CloseClipboard();
+                        }
+                        else
+                            GlobalFree(hMem);
+                    }
+                }
+            }
+            return;
+        }
+        case 'X':
+        {
+            int s = Editor_GetSelectionAnchor(&g_app.editor);
+            int e = Editor_GetSelectionActive(&g_app.editor);
+            if (s > e) { int t = s; s = e; e = t; }
+            int len = e - s;
+            if (len > 0 && Editor_HasSelection(&g_app.editor))
+            {
+                const wchar_t* txt = Document_GetText(Editor_GetDocument(&g_app.editor));
+                HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(wchar_t));
+                if (hMem)
+                {
+                    wchar_t* dst = GlobalLock(hMem);
+                    wcsncpy(dst, txt + s, len);
+                    dst[len] = L'\0';
+                    GlobalUnlock(hMem);
+                    if (OpenClipboard(g_app.hwnd))
+                    {
+                        EmptyClipboard();
+                        SetClipboardData(CF_UNICODETEXT, hMem);
+                        CloseClipboard();
+                        result = Editor_HandleKey(&g_app.editor, EDITOR_KEY_BACKSPACE);
+                    }
+                    else
+                        GlobalFree(hMem);
+                }
+            }
+            break;
+        }
+        case 'V':
+        {
+            if (OpenClipboard(g_app.hwnd))
+            {
+                HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+                if (hData)
+                {
+                    const wchar_t* clip = (const wchar_t*)GlobalLock(hData);
+                    if (clip)
+                    {
+                        result = Editor_InsertText(&g_app.editor, clip);
+                        GlobalUnlock(hData);
+                    }
+                }
+                CloseClipboard();
+            }
+            break;
+        }
+        }
+    }
+
     switch (key)
     {
     case VK_LEFT:
@@ -1090,6 +1177,10 @@ void App_OnKeyDown(unsigned int key)
 
     case VK_BACK:
         result = Editor_HandleKey(&g_app.editor, EDITOR_KEY_BACKSPACE);
+        break;
+
+    case VK_DELETE:
+        result = Editor_HandleKey(&g_app.editor, EDITOR_KEY_DELETE);
         break;
     }
 
@@ -1149,6 +1240,10 @@ void App_OnLeftButtonDown(int x, int y)
     result = Editor_SetCursor(&g_app.editor, cursor);
     if (result == EDITOR_RESULT_ERROR)
         return;
+
+    /* 单击清除选区 */
+    if (Editor_HasSelection(&g_app.editor))
+        Editor_ClearSelection(&g_app.editor);
 
     if (App_ResultNeedsRefresh(result))
     {

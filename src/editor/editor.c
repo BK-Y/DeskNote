@@ -139,6 +139,19 @@ EditorResult Editor_HandleKey(Editor* editor, EditorKey key)
         Editor_ClearPreferredColumn(editor);
         return EDITOR_RESULT_TEXT_CHANGED;
 
+    case EDITOR_KEY_DELETE:
+        if (editor->has_selection)
+        {
+            Editor_ClearSelection(editor);
+            return EDITOR_RESULT_TEXT_CHANGED;
+        }
+        if (editor->cursor >= Document_GetLength(&editor->document))
+            return EDITOR_RESULT_UNCHANGED;
+        if (Document_DeleteChar(&editor->document, editor->cursor) != 0)
+            return EDITOR_RESULT_ERROR;
+        Editor_ClearPreferredColumn(editor);
+        return EDITOR_RESULT_TEXT_CHANGED;
+
     case EDITOR_KEY_ENTER:
         return Editor_HandleChar(editor, L'\n');
     }
@@ -277,4 +290,26 @@ void Editor_GetWordBoundary(const Editor* editor, int* out_start, int* out_end)
         *out_start = cursor;
         *out_end = cursor;
     }
+}
+
+/* === insert text === */
+
+EditorResult Editor_InsertText(Editor* editor, const wchar_t* text)
+{
+    if (editor == NULL || text == NULL)
+        return EDITOR_RESULT_ERROR;
+
+    if (editor->has_selection)
+        Editor_ClearSelection(editor);
+
+    while (*text != L'\0')
+    {
+        if (Document_InsertChar(&editor->document, editor->cursor, *text) != 0)
+            return EDITOR_RESULT_ERROR;
+        editor->cursor += 1;
+        text++;
+    }
+
+    Editor_ClearPreferredColumn(editor);
+    return EDITOR_RESULT_TEXT_CHANGED;
 }

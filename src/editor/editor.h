@@ -15,7 +15,8 @@ typedef enum {
     EDITOR_KEY_UP,
     EDITOR_KEY_DOWN,
     EDITOR_KEY_BACKSPACE,
-    EDITOR_KEY_ENTER
+    EDITOR_KEY_ENTER,
+    EDITOR_KEY_DELETE
 } EditorKey;
 
 typedef enum {
@@ -76,5 +77,6 @@ int Editor_GetSelectionAnchor(const Editor* editor);
 int Editor_GetSelectionActive(const Editor* editor);
 int Editor_HasSelection(const Editor* editor);
 void Editor_GetWordBoundary(const Editor* editor, int* out_start, int* out_end);
+EditorResult Editor_InsertText(Editor* editor, const wchar_t* text);
 
 #endif
