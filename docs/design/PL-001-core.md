@@ -1,12 +1,14 @@
 # PL-001: 核心数据模型与窗口行为实现计划（基于 ADR-0001）
 
+> **状态：历史探索草案。** 当前仓库不按本文执行；若与现状冲突，请以当前代码、`README.md`、`docs\design\architecture.md` 以及 `.ai\` 目录中的现行计划为准。
+
 ## 概述
 
-本计划基于 ADR-0001（采用 journal + checkpoint 恢复策略）与 `docs/architecture.md` 中的设计决策，目标是实现 desknote 的最小可用核心（MVP-1），包括笔记的文件化存储、append-only 日志、启动时恢复逻辑、多窗口行为、以及全局预览（Overview）。
+本计划是一次较早的存储 / 多窗口方向探索，目标曾经是实现 desknote 的另一版最小可用核心（MVP-1），包括笔记的文件化存储、append-only 日志、启动时恢复逻辑、多窗口行为以及全局预览（Overview）。
 
-设计参考（必读）
-- docs/adr/0001-journal-recovery.md
-- docs/architecture.md
+历史参考
+- `docs\design\architecture.md`
+- 旧 ADR 草稿曾在仓库外部讨论，但当前仓库内已不再保留对应 `docs\adr\` 文件
 
 ## 目标
 - 实现以 Markdown 文件为最终存储的笔记模型（每条 note 为文件夹，包含 note.md, state.json, journal.log）。

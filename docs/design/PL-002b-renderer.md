@@ -1,5 +1,7 @@
 # PL-002b: Renderer（HTML Preview 与原生渲染）
 
+> **状态：历史探索草案。** 当前仓库不按本文执行；若与现状冲突，请以当前代码、`README.md`、`docs\design\architecture.md` 以及 `.ai\` 目录中的现行计划为准。
+
 ## 目标
 - 提供可用的 Preview 渲染后端（HTML + WebView）作为首要实现。
 - 设计原生渲染接口，支持未来替换或补充（用于编辑器内嵌渲染与低延迟绘制）。

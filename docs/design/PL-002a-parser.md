@@ -1,5 +1,7 @@
 # PL-002a: Parser Adapter 与 DocumentModel
 
+> **状态：历史探索草案。** 当前仓库不按本文执行；若与现状冲突，请以当前代码、`README.md`、`docs\design\architecture.md` 以及 `.ai\` 目录中的现行计划为准。
+
 ## 目标
 - 使用 `md4c` 将 Markdown 文本解析为内部 DocumentModel（节点流/AST），并提供同步与异步 API。
 - DocumentModel 应支持后续的差分比较与 patch 生成（便于最小更新渲染）。

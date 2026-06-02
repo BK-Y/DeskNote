@@ -5,9 +5,23 @@
 > 文档中列出的估时和阶段顺序只是参考方向，不是承诺。
 
 本文档分三部分：
-1. **遗留实现**（v0.1.0 之前）—— 旧版 Win32 + GDI 代码结构
-2. **当前重构约定**（v0.1.x）—— 当前正在落地的模块边界与技术决策
+1. **遗留实现**（历史快照）—— 旧版 Win32 + GDI 代码结构
+2. **当前重构约定**（当前有效）—— 当前已经落地或正在继续收紧的模块边界与技术决策
 3. **远期目标架构** —— 后续持续演进方向
+
+## 当前状态快照（2026-05）
+
+当前仓库里的实际状态已经不是“无编辑器 / 待接入存储”的阶段，而是：
+
+- 已完成 `app / platform / render / ui / editor / core / storage` 分层拆分
+- 已完成最小文本输入链与基础浏览
+- 已完成 DirectWrite 光标测量
+- 已完成系统光标与 IME 跟随
+- 已完成 `%LOCALAPPDATA%\DeskNote\state.ini` + `note.md` 持久化
+- 已完成保存安全主线 `Phase 6-9`（dirty / autosave / atomic save / crash recovery）
+- 下一阶段主线切换为“便签窗口壳层”：自绘窗体、托盘后台、桌面常驻模式
+
+> 当前执行计划不再维护在 `docs\plan\`，而是维护在 `.ai\plan.md` 与 `.ai\phases\`。
 
 ---
 
@@ -24,7 +38,7 @@
 | 构建 | CMake 3.20+ + MinGW-w64 GCC |
 | 产物 | 单文件 `desknote.exe`，绿色免安装 |
 
-### 架构分层（当前实际）
+### 架构分层（当时实际）
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -104,7 +118,7 @@
     └── dn_YYYYMMDD_###.md   # 便签文件（UTF-8 BOM）
 ```
 
-### 当前阻塞问题
+### 当时的阻塞问题（现多已解决或过时）
 
 1. **`lib/widget.h` / `lib/widget.c` 已废弃** — `src/ui/titlebar.c` 引用了 Widget 结构体，但 GDI 已移除，该库不再需要。titlebar 需随渲染层一起重构为 Direct2D 绘制
 2. **无编辑器** — 单窗口 WYSIWYG 方案已确定，基于 Direct2D + DirectWrite 构建，待实现
@@ -157,6 +171,37 @@
 
 > `ui` 决定画什么，`render` 负责基于 Direct2D / DirectWrite 把它画出来。
 
+### `ui/button` — 通用按钮组件
+
+`src/ui/button.h` / `button.c` 提供可复用的按钮渲染、状态管理和命中测试，供标题栏、设置面板等所有 UI 组件使用。
+
+```c
+// 按钮交互状态
+ButtonState { NORMAL, HOVER, PRESSED }
+
+// 按钮实例
+Button {
+    RenderRect rect;          // 按钮区域（相对窗口客户区）
+    ButtonState state;        // 当前交互状态
+    int is_visible;           // 可见性
+    int is_enabled;           // 是否响应鼠标
+    RenderColor bg_color;     // NORMAL 态背景
+    RenderColor hover_color;  // HOVER 态背景
+    RenderColor pressed_color;// PRESSED 态背景
+    const wchar_t* label;     // 标签文字（NULL=纯色块）
+}
+
+// 接口
+Button_Init()         // 初始化按钮
+Button_HitTest()      // 命中测试
+Button_UpdateState()  // 根据鼠标位置更新 NORMAL/HOVER/PRESSED
+Button_Draw()         // 根据 state 选择颜色并绘制
+```
+
+**依赖规则**：`ui/button` 只依赖 `render/`，使用 `Render_FillRect` / `Render_DrawText` 完成绘制，不引入新原语。
+
+**不负责**：按钮点击的业务语义（关闭窗口、最小化等由 `app/` 层通过 `AppShellCommand` 分发）。
+
 #### 一句话职责
 
 | 层 | 回答的问题 | 应该负责 | 不应该负责 |
@@ -164,7 +209,7 @@
 | `app/` | 程序怎么接起来 | 初始化、依赖注入、生命周期、事件分发 | 具体绘制、具体编辑规则、具体存储细节 |
 | `platform/` | 操作系统发生了什么 | Win32 窗口、消息循环、输入消息、定时器、系统 API | 文档模型、编辑命令、Markdown 语义 |
 | `render/` | 东西怎么画出来 | Direct2D/DirectWrite 生命周期、render target、画刷、字体、文本与图元绘制 | 知道什么是标题栏、光标、标签、TODO |
-| `ui/` | 界面应该显示什么 | 标题栏、编辑区、状态栏、布局、hover/focus、命中区域 | 底层文本编辑规则、磁盘读写 |
+| `ui/` | 界面应该显示什么 | 标题栏、编辑区、状态栏、按钮组件、布局、hover/focus、命中区域 | 底层文本编辑规则、磁盘读写 |
 | `editor/` | 文档怎么变化 | 插入删除、光标、选区、键盘命令、撤销重做 | 直接调用 Win32、直接操作 D2D |
 | `core/` | 数据是什么 | `Document`、Markdown 语义、标签/TODO 数据结构 | 平台 API、窗口、绘图后端 |
 | `storage/` | 状态怎么进出磁盘 | note load/save、settings、启动恢复、原子写入 | 组件绘制、窗口消息、输入派发 |
@@ -199,17 +244,20 @@ render/      -> 负责“具体怎么画出来”
 app
  ├── platform
  ├── render
- ├── ui
+ ├── ui         ← ui/ 内部按命名区分：button=通用，titlebar=产品
  ├── editor
  ├── core
  └── storage
 
-ui      -> 可依赖 render、editor、core
-editor  -> 可依赖 core
-storage -> 可依赖 core
-render  -> 不依赖 ui/editor/core 的业务概念
-platform-> 不依赖 editor/core/storage 的业务实现
-core    -> 不依赖任何平台与渲染层
+global rules:
+  render -> 不依赖任何层（纯 Direct2D/DirectWrite 封装）
+  core   -> 不依赖任何平台与渲染层
+  ui     -> 通用组件（如 button）只依赖 render/
+            产品组件（如 titlebar、editor_view）可依赖 render、ui/通用组件、editor、core
+  app    -> 可依赖 ui、platform、editor、core、storage
+  editor -> 可依赖 core
+  storage-> 可依赖 core
+  platform-> 不依赖 editor/core/storage 的业务实现
 ```
 
 补充约束：
@@ -219,6 +267,7 @@ core    -> 不依赖任何平台与渲染层
 3. `storage/` 不持有窗口句柄，不直接操作 UI
 4. `platform/` 只把系统事件翻译出来，不直接修改 `Document`
 5. `app/` 只做组装与调度，不堆积具体业务逻辑
+6. `ui/` 中的通用组件（按文件名约定识别，如 `button`）只依赖 `render/`，不依赖 `app/`、`platform/`、`core/`、`editor/`、`storage/` 中的任何一个——这是保证它们可跨项目复用的约束
 
 #### 当前推荐事件流
 
@@ -277,6 +326,78 @@ Win32 消息
 一句话约定：
 
 > `editor` 负责知道“内容是否变了”，`app` 负责知道“什么时候该保存”，`storage` 负责知道“如何安全保存与恢复”。
+
+#### 后续便签窗口壳层的职责归属
+
+便签产品的“像不像便签”，主要不在 `editor/`，而在窗口壳层。
+
+后续如果把窗口改成**无系统标题栏 / 无系统边框 / 自绘标题区 / 托盘后台 / 桌面驻留**，职责应固定如下：
+
+| 能力 | 主要归属 | 辅助归属 | 不应放入 |
+|------|------|------|------|
+| 自绘标题栏布局与按钮语义 | `ui/` | `render/` `app/` | `platform/` `editor/` |
+| 无边框窗体样式切换 | `platform/` | `app/` | `editor/` `storage/` |
+| 拖拽移动 / 边缘缩放 / hit test | `platform/` | `ui/` `app/` | `editor/` `storage/` |
+| 标题栏按钮触发的壳层命令 | `app/` | `ui/` `platform/` | `editor/` `render/` |
+| 托盘图标 / 托盘菜单 / 隐藏显示生命周期 | `platform/` | `app/` `storage/` | `editor/` `render/` |
+| 常驻最前（floating topmost） | `app/` + `platform/` | `storage/` | `editor/` `render/` |
+| 贴边占位（edge-reserved / AppBar） | `platform/` + `app/` | `storage/` `ui/` | `editor/` `render/` |
+| 壳层模式持久化 | `storage/` | `app/` | `platform/` `editor/` |
+
+补充约定：
+
+1. **“始终置顶”与“贴边占位”不是同一个开关**
+   - 前者只是 Z-order 策略，窗口仍是普通浮动窗体
+   - 后者会向系统申请工作区边界，影响其他窗口最大化后的可用区域
+   - 这两种模式在 `app` 状态、`platform` 实现、`storage` 持久化上都必须分开建模
+
+2. **`platform/` 负责系统语义，`ui/` 负责产品语义**
+   - 例如 `WM_NCHITTEST`、`SetWindowPos`、托盘图标、AppBar 注册属于 `platform/`
+   - 标题栏按钮排布、hover/pressed 状态、哪一个按钮代表“常驻桌面”属于 `ui/`
+
+3. **`app/` 负责收束壳层模式切换**
+   - 用户点击按钮、托盘菜单命令、启动恢复壳层状态，都先进入 `app`
+   - 再由 `app` 协调 `platform` 切换窗体行为、协调 `storage` 落盘
+
+
+## 扩展点与可选功能添加指南
+
+为保证架构一致性与计划可追踪性，关于“可选”或“未来”功能的添加，必须遵循下列流程与约束：
+
+1. 主计划登记（强制）
+    - 所有可选/未来功能必须先在主计划 `.ai/plan.md` 中登记为独立项目，包含：目标、产出、优先级、依赖与估时。
+    - 不允许仅在阶段文件或 PR 描述中临时写明未来功能。
+
+2. 以 Phase 纳入实施（强制）
+    - 新功能的实际实现必须通过新增 `.ai/phases/phase-*.md` 的方式纳入阶段计划，且该 Phase 文件代表本次必须完成的工作。
+    - Phase 文件中不得使用“可选/骨架/临时” 等模糊词汇；Phase 意味着“本次要做并需要验收”。
+
+3. 架构层扩展点说明（必写）
+    - 在 `docs/design/architecture.md` 中为每个重要扩展点写明：位置（文件/目录）、对外 API/契约、责任边界（哪些层参与）、以及向后兼容策略。
+    - 示例（非客户区模块）：
+      - 放置：`src/platform/win32/nonclient.c` / `nonclient.h`
+      - 建议 API：`Platform_Nonclient_Init(HWND hwnd)`, `Platform_Nonclient_HandleNCHitTest(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)`, `Platform_Nonclient_Shutdown()`。
+      - `app` 调用点：`App_Init` 调用初始化，`App_RequestClientRebuild` 调用重建；`ui` 提供 `EditorView_OnClientAreaChanged` 回调。
+
+4. 实施检查清单（每次实现前必须列出）
+    - 在 Phase 文件中列出：
+      - 事件采集点（platform 消息）
+      - 编排/策略持有方（app）
+      - UI 需实现的回调或适配点（ui/editor_view）
+      - 持久化字段（storage/state_store）
+      - 最小验收测试用例（手动/自动）
+
+5. 版本与兼容性约定
+    - 扩展点必须定义最小 API 契约与错误语义，不得破坏已冻结接口。
+    - 若需要行为变更，应优先通过新增 API 或 feature flag 控制，避免直接修改现有合同。
+
+6. 归档与冻结
+    - 扩展功能实现完成并验证后，负责该 Phase 的文件应按标准重命名为 `_done`，并在 PR/变更记录中附上验收报告与自动化测试链接。
+
+遵守以上流程可确保未来能力的渐进加入不会破坏当前分层边界，并为代码审查与回滚提供明确的轨迹。
+4. **`editor/` 不感知窗体壳层**
+   - 编辑器只知道可用客户区尺寸变化
+   - 不直接知道标题栏是否自绘、窗口是否在托盘、是否占据桌面边缘
 
 ## 第三部分：远期目标架构
 
@@ -408,7 +529,9 @@ platform/win32/window.c  -> 窗口类注册、创建、消息循环、WndProc
 
 后续再逐步扩展：
 platform/win32/timer.c
-platform/win32/dock.c
+platform/win32/nonclient.c
+platform/win32/tray.c
+platform/win32/appbar.c
 platform/linux/*
 ```
 
@@ -442,6 +565,11 @@ platform/linux/*
 
 唯一知道所有模块存在的文件，负责启动时初始化各层，收消息后分发给 `ui/`。
 
+**约束：app 层不直接调用系统或平台 API。**
+- 系统 API（ShowWindow、SetWindowPos、Shell_NotifyIcon 等）由 `platform/` 层封装
+- app 层只通过平台层提供的接口或已有的收束机制（如窗口过程的 switch 分支）与系统交互
+- 违反此约束的情形：命令收束 switch 放在 `window.c`（平台层）中，app 层只提交命令不做执行
+
 ```
 行为：
     Window_Create → Render_Init → Editor_Init → UI_Init → Window_Loop
@@ -472,7 +600,7 @@ ui/ 组件树命中检测 → 找鼠标位置落在哪个组件上
     │
     ├── 按钮 → 触发 Command → core/ 执行 → 重绘
     ├── 编辑器点击 → editor/ 定位光标 → 重绘
-    └── 标题栏操作 → 切换置顶/隐藏 → 重绘
+    └── 壳层操作 → app 收束模式切换 → platform 更新窗口形态 / 托盘 / AppBar
     │
     ▼
 editor/core 处理完毕 → Document/AST 变更
