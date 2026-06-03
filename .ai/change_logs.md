@@ -9,3 +9,4 @@
 | 2026-06-03 | 文件重命名：phase-* → plan-* 前缀 | `8dd6eef` |
 | 2026-06-03 | 创建架构文档 arch.md | `5df7646` |
 | 2026-06-03 | Phase-11/12 索引更新，新增 Repair：模块化拆分 | `plans/plan-11-index.md` |
+| 2026-06-03 | 创建 insights 体系：ini2arr、Shell_SetMode、target/need | `insights/it-001-ini2arr.md` |
