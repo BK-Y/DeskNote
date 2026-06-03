@@ -2,7 +2,7 @@
 
 ## 1. 每个计划必须包含的章节
 
-所有计划文件（`.ai/phases/*.md`）必须按以下结构编写：
+所有计划文件（`.ai/plans/*.md`）必须按以下结构编写：
 
 ```markdown
 # 计划标题
@@ -37,19 +37,19 @@
 ### 2.1 文件命名
 
 ```
-phase-{阶段编号}-shell-{子阶段}_{可选细分}.md
+plan-{阶段编号}-shell-{子阶段}_{可选细分}.md
 ```
 
 示例：
-- `phase-10-shell-5a_repair-5-a-1_startup-register.md`
-- `phase-10-shell-5b.md`
+- `plan-10-shell-5a_repair-5-a-1_startup-register.md`
+- `plan-10-shell-5b.md`
 
 ### 2.2 同一计划多个文件
 
 若一个计划被拆分为多个子计划，子计划命名：
 
 ```
-phase-{阶段编号}-shell-{子阶段}_{父计划名}-{序号}_{简短描述}.md
+plan-{阶段编号}-shell-{子阶段}_{父计划名}-{序号}_{简短描述}.md
 ```
 
 ## 3. 测试计划编写要求    ← 核心标准

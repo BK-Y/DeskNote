@@ -3,7 +3,7 @@
 Before making changes:
 
 1. Read all files in `.ai/`
-2. Update `plan.md`
+2. Update `plans.md`
 3. Explain architectural impact
 4. Record important decisions in `decisions.md`
 

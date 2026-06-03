@@ -4,7 +4,7 @@
 ### 读取规则（降 token）
 
 1. 先读本文件，只获取总目标、当前阶段、阶段索引
-2. 当前执行哪个 Phase，再只读对应 `./phases/phase-X.md`
+2. 当前执行哪个 Phase，再只读对应 `./plans/plan-X.md`
 3. 只有在需要理解决策原因或边界时，再读：
    - `./decisions.md`
    - `../docs/design/architecture.md`
@@ -19,7 +19,7 @@
      - 读取规则
    - 不把单个 Phase 的详细步骤重新铺回总文件
 
-2. **分阶段细节写在 `./phases/phase-X.md`**
+2. **分阶段细节写在 `./plans/plan-X.md`**
    - 只在对应阶段文件里维护：
      - 目标
      - 文件落点
@@ -44,7 +44,7 @@
 
 Phase 编写与审查规则见：
 
-- `./standards/phase-planning.md`
+- `./standards/plan-planning.md`
 
 ## 版本路线
 
@@ -91,7 +91,7 @@ Phase 编写与审查规则见：
 
 **待获取数据：** 在笔记本上运行当前版本，贴边后抓 DebugView 日志中的 `[s5a-diag]` 行。
 
-**相关计划：** Shell-5a（phase-10-shell-5a）
+**相关计划：** Shell-5a（plan-10-shell-5a）
 
 ### 总目标要求
 
@@ -184,28 +184,28 @@ Phase 编写与审查规则见：
 
 | Phase | 状态 | 主题 | 详细文件 |
 |------|------|------|------|
-| 1 | 已完成 | 恢复可编译骨架 | `./phases/done/phase-10-shell-1_done.md` |
-| 2 | 已完成 | 打通显示链路 | `./phases/done/phase-10-shell-2_done.md` |
-| 3 | 已完成 | 打通输入链路 | `./phases/done/phase-10-shell-3_done.md` |
-| 4 | 已完成 | 接入存储 | `./phases/done/phase-10-shell-4_done.md` |
-| 5a | 已完成主体 | 补基础交互主链 | `./phases/done/phase-10-shell-5a_done.md` |
-| 5b | 已完成 | 收紧基础交互收尾 | `./phases/done/phase-10-shell-5b_done.md` |
-| 5c | 已完成 | 收口纵向移动内聚重构 | `./phases/done/phase-10-shell-5c_done.md` |
-| 5d | 已完成 | 做基础交互验收与稳定化 | `./phases/done/phase-10-shell-5d_done.md` |
-| 6 | 已完成 | 保存安全：建立内存落盘模型 | `./phases/done/phase-10-shell-6_done.md` |
-| 7 | 已完成 | 保存安全：基于内存模型接入自动保存 | `./phases/done/phase-10-shell-7_done.md` |
-| 8 | 已完成 | 保存安全：基于内存模型接入原子保存 | `./phases/done/phase-10-shell-8_done.md` |
-| 9 | 已完成 | 保存安全：基于内存模型接入崩溃恢复 | `./phases/done/phase-10-shell-9_done.md` |
-| Shell-10 | 进行中 | 便签窗口壳层（子阶段分解见下方） | `./phases/phase-10-shell-index.md` |
-| 11 | 后续 | 补基础选择 | `./phases/phase-11.md` |
-| 12 | 后续 | 补高级浏览 | `./phases/phase-12.md` |
-| 13 | 后续 | 补编辑命令面 | `./phases/phase-13.md` |
-| 14 | 后续 | 补 Markdown 交互 | `./phases/phase-14.md` |
-| 15 | 后续 | 补高级编辑 | `./phases/phase-15.md` |
+| 1 | 已完成 | 恢复可编译骨架 | `./plans/done/plan-10-shell-1_done.md` |
+| 2 | 已完成 | 打通显示链路 | `./plans/done/plan-10-shell-2_done.md` |
+| 3 | 已完成 | 打通输入链路 | `./plans/done/plan-10-shell-3_done.md` |
+| 4 | 已完成 | 接入存储 | `./plans/done/plan-10-shell-4_done.md` |
+| 5a | 已完成主体 | 补基础交互主链 | `./plans/done/plan-10-shell-5a_done.md` |
+| 5b | 已完成 | 收紧基础交互收尾 | `./plans/done/plan-10-shell-5b_done.md` |
+| 5c | 已完成 | 收口纵向移动内聚重构 | `./plans/done/plan-10-shell-5c_done.md` |
+| 5d | 已完成 | 做基础交互验收与稳定化 | `./plans/done/plan-10-shell-5d_done.md` |
+| 6 | 已完成 | 保存安全：建立内存落盘模型 | `./plans/done/plan-10-shell-6_done.md` |
+| 7 | 已完成 | 保存安全：基于内存模型接入自动保存 | `./plans/done/plan-10-shell-7_done.md` |
+| 8 | 已完成 | 保存安全：基于内存模型接入原子保存 | `./plans/done/plan-10-shell-8_done.md` |
+| 9 | 已完成 | 保存安全：基于内存模型接入崩溃恢复 | `./plans/done/plan-10-shell-9_done.md` |
+| Shell-10 | 进行中 | 便签窗口壳层（子阶段分解见下方） | `./plans/plan-10-shell-index.md` |
+| 11 | 后续 | 补基础选择 | `./plans/plan-11.md` |
+| 12 | 后续 | 补高级浏览 | `./plans/plan-12.md` |
+| 13 | 后续 | 补编辑命令面 | `./plans/plan-13.md` |
+| 14 | 后续 | 补 Markdown 交互 | `./plans/plan-14.md` |
+| 15 | 后续 | 补高级编辑 | `./plans/plan-15.md` |
 
 ### Shell 壳层子阶段完成明细
 
-以下子阶段均在 `./phases/done/` 下有 `_done.md` 文件佐证：
+以下子阶段均在 `./plans/done/` 下有 `_done.md` 文件佐证：
 
 ```
 Shell-1a ── 壳层状态与标题栏命令模型                          ✅ 已完成
@@ -254,7 +254,7 @@ Shell-5c  ── 常驻模式状态提示                                    ❌
 
 当前实际瓶颈在 **Shell-5a AppBar 贴边死区诊断与修复**。
 
-壳层子阶段统一由 `phase-10-shell-index.md` 管理进度，但该文件的状态表已严重过时（仍把 Shell-3a~3c 标为"后续"），需同步更新。
+壳层子阶段统一由 `plan-10-shell-index.md` 管理进度，但该文件的状态表已严重过时（仍把 Shell-3a~3c 标为"后续"），需同步更新。
 
 ### 当前阶段产出目标
 
@@ -283,13 +283,13 @@ Shell-5c  ── 常驻模式状态提示                                    ❌
 
 当前最该读的文件：
 
-- `./phases/phase-10-shell-index.md` — 壳层子阶段索引（需先更新状态表）
-- `./phases/done/phase-10-shell-3c_2_done.md` — 最后一个完成的壳层子阶段
-- `./phases/phase-10-shell-5a.md` — AppBar 贴边 bug 相关计划
-- `./phases/rollback-5a.md` — 5a 回滚记录
-- `./phases/phase-10-shell-5.md` — 后续贴边占位规划
-- `./phases/phase-10-shell-4a_1.md` — floating topmost 待验收
-- `./phases/phase-10-shell-4a_2.md` — floating topmost 待验收
+- `./plans/plan-10-shell-index.md` — 壳层子阶段索引（需先更新状态表）
+- `./plans/done/plan-10-shell-3c_2_done.md` — 最后一个完成的壳层子阶段
+- `./plans/plan-10-shell-5a.md` — AppBar 贴边 bug 相关计划
+- `./plans/rollback-5a.md` — 5a 回滚记录
+- `./plans/plan-10-shell-5.md` — 后续贴边占位规划
+- `./plans/plan-10-shell-4a_1.md` — floating topmost 待验收
+- `./plans/plan-10-shell-4a_2.md` — floating topmost 待验收
 - `./decisions.md`
 - `../docs/design/architecture.md`
 
