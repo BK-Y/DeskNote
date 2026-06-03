@@ -203,6 +203,6 @@ app 发起正式保存
 
 ## 读取顺序建议
 
-1. `./plan.md`
+1. `./plans.md`
 2. `./save-safety-model.md`
-3. 当前阶段对应的 `./phases/phase-X.md`
+3. 当前阶段对应的 `./plans/plan-X.md`

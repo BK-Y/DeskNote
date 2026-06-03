@@ -1,13 +1,13 @@
 # Decisions
 
-> 本文件记录"为什么这样定"。对应执行步骤与阶段安排见：`./plan.md`
+> 本文件记录"为什么这样定"。对应执行步骤与阶段安排见：`./plans.md`
 
 ## 2026-05-25 - Render 作为基础绘制后端
 
 关联计划位置：
 
-- `plan.md` → `当前方案收束` → `当前对 render 的定义`
-- `plan.md` → `Phase 2 - 打通显示链路`
+- `./plans.md` → `当前方案收束` → `当前对 render 的定义`
+- `./plans.md` → `Phase 2 - 打通显示链路`
 
 ### 决策
 
@@ -45,8 +45,8 @@ platform -> app -> ui -> render
 
 关联计划位置：
 
-- `plan.md` → `当前方案收束`
-- `plan.md` → `Phase 2 - 打通显示链路`
+- `./plans.md` → `当前方案收束`
+- `./plans.md` → `Phase 2 - 打通显示链路`
 
 ### 决策
 
@@ -75,8 +75,8 @@ platform -> app -> ui -> render(Direct2D/DirectWrite)
 
 关联计划位置：
 
-- `plan.md` → `当前阶段焦点`
-- `.ai/phases/phase-shell-1d.md` → `技术路线`
+- `./plans.md` → `当前阶段焦点`
+- `.ai/plans/plan-10-shell-1d_done.md` → `技术路线`
 
 ### 决策
 

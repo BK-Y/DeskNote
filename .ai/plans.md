@@ -7,7 +7,7 @@
 2. 当前执行哪个 Phase，再只读对应 `./plans/plan-X.md`
 3. 只有在需要理解决策原因或边界时，再读：
    - `./decisions.md`
-   - `../docs/design/architecture.md`
+   - `.ai/arch.md`
 
 ### 计划文件分布规则
 
@@ -33,7 +33,7 @@
    - 为什么不采用其他方案
    - 不把“原因说明”塞回阶段文件
 
-4. **分层边界写在 `../docs/design/architecture.md`**
+4. **分层边界写在 `.ai/arch.md`**
    - 哪一层负责什么
    - 哪些依赖允许，哪些不允许
    - 不把架构边界写成阶段任务
@@ -291,7 +291,7 @@ Shell-5c  ── 常驻模式状态提示                                    ❌
 - `./plans/plan-10-shell-4a_1.md` — floating topmost 待验收
 - `./plans/plan-10-shell-4a_2.md` — floating topmost 待验收
 - `./decisions.md`
-- `../docs/design/architecture.md`
+- `.ai/arch.md`
 
 ## 后续保存能力路线
 
