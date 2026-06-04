@@ -1,4 +1,5 @@
 /* Test for src/config/config.c + src/utils/ini2arr.c */
+/* test - plan 11b (Config_Init/Get/Set/Shutdown full suite) */
 #include "src/config/config.h"
 #include <stdio.h>
 #include <string.h>

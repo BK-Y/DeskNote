@@ -2,76 +2,158 @@
 
 ## 核心问题
 
-Plan-11（统一配置入口）已完成全部 4 个子阶段的代码实施，但未系统验证工作正确性。
-11a/b 有单元测试，11c/d 仅做了语法检查。
+Plan-11 共 4 个子阶段（11a~11d），每个子阶段完成后应有对应测试计划。
+测试文件行末加 `// test - plan 11x` 标记，便于追溯和清理。
 
-## 分析现状
+---
 
-- 前置：Plan-11a 到 11d 全部代码已提交，编译通过
-- 现状：`test/test_config.c`（9/9）和 `test/test_ini2arr.c`（4/4）两个单元测试就绪
-- 产出：全 Plan 回归验证通过，所有配置读取/写入/伴生行为路径确认正常
+## 前置模块测试（非 Plan-11 自身，但被依赖）
 
-## 验证分组
+### ini2arr（`test/test_ini2arr.c`）
 
-### A — 正常路径（6 项）
+```
+// test - plan 11b dep (ini2arr module)
+```
 
-覆盖冷启动三种模式（贴边/浮动/普通）和运行时三种用户操作（菜单、拖拽、托盘）。
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| DEP-1 | 读 ini 文件 2 条 key=value | 返回 2 条 | ✅ 4/4 PASS |
+| DEP-2 | 修改已有 key | 文件值更新，注释保留 | ✅ |
+| DEP-3 | 追加新 key | 文件末尾追加 | ✅ |
 
-### B — 回调触发（3 项）
+---
 
-验证 `Config_Set("shell_resident_mode", ...)` 正确触发 `OnShellModeChanged`，同一值不重复触发。
+## 11a — 模块骨架
 
-### C — 状态一致性（4 项）
+### 无专项测试
 
-验证 ini 文件与内存表一致、注释保留、新 key 追加。
+11a 只创建空文件骨架，由 11b 的测试覆盖。
 
-### D — StateStore 残留（2 项）
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11a-1 | `gcc -fsyntax-only src/config/config.c` | 0 error | ✅ |
 
-`grep` 验证 `StateStore_Save` 仅余文档管理 2 处。
+---
 
-### E — 边界情况（3 项）
+## 11b — ini2arr 接入（`test/test_config.c`）
 
-无效 ini 文件、重复 Init/Shutdown、重启持久化恢复。
+```
+/* test - plan 11b (Config_Init/Get/Set/Shutdown full suite) */
+```
 
-### F — 回归（2 项）
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11b-1 | Config_Init → 读 ini | 返回 0 | ✅ |
+| 11b-2 | Config_Get 已有 key | 返回匹配值 | ✅ |
+| 11b-3 | Config_Get 不存在的 key | 返回 default_val | ✅ |
+| 11b-4 | Config_Set 改已有 key | 返回 0 | ✅ |
+| 11b-5 | Config_Get 确认改后值 | 返回新值 | ✅ |
+| 11b-6 | Config_Set 新 key | 内存表追加 | ✅ |
+| 11b-7 | Config_Get 新 key | 返回新值 | ✅ |
+| 11b-8 | 检查 ini 文件 | 注释保留 | ✅ |
+| 11b-9 | Config_Shutdown → 再 Config_Set | 返回错误（已释放） | ✅ |
+| 11b-10 | `test/test_config_edge.c` E-1：缺失 ini | Config_Init 返回错误 | ✅ |
+| 11b-11 | `test/test_config_edge.c` E-3：Shutdown→Init→重新读取 | 值持久化 | ✅ |
 
-重新编译运行 `test_config` 和 `test_ini2arr`，原测试全量通过。
+---
 
-## 推进步骤
+## 11c — 迁移写入点
 
-| 步骤 | 操作内容 | 操作结果 | 验证方式 |
-|------|---------|---------|---------|
-| 1 | 运行 `test_ini2arr` | 4/4 PASS | `gcc -I. -o test_ini2arr test/test_ini2arr.c src/utils/ini2arr.c && ./test_ini2arr` |
-| 2 | 运行 `test_config` | 9/9 PASS | `gcc -I. -o test_config test/test_config.c src/config/config.c src/utils/ini2arr.c && ./test_config` |
-| 3 | grep StateStore_Save | 仅余 2 处（文档管理） | `grep -c "StateStore_Save" src/app/app.c` |
-| 4 | grep StateStore_Load | 仅余文档管理 + release_on_drag | `grep -n "StateStore_Load\|StateStore_Save" src/app/app.c` |
-| 5 | A-1 冷启动贴边 | 窗口贴右边缘 | 手动：设 ini `shell_resident_mode=2` 重启，最大化其他窗口观察 |
-| 6 | A-2 冷启动浮动 | 窗口浮动到 (100,100) | 手动：设 ini 浮动坐标重启 |
-| 7 | A-4 A-5 菜单贴边/退出 | 贴边/移回中央 | 手工操作两次菜单 |
-| 8 | A-6 菜单浮动 | 窗口置顶 | 手工操作菜单 |
-| 9 | B-1/B-2 回调单次触发 | 显式 AppBar 调用不再存在 | `grep -n "AppBar_Register\|AppBar_Unregister" src/app/app.c` |
-| 10 | C-3/C-4 注释保留和新 key | ini 文件完好 | 手工检查 `state.ini` |
+### 11c-01 启动恢复
 
-## 验收标准
+```
+// test - plan 11c-01
+```
 
-- [x] F-1: `test_ini2arr` 4/4 PASS
-- [x] F-2: `test_config` 9/9 PASS
-- [x] D-1: StateStore_Save 仅余 2 处（文档管理）
-- [x] D-2: StateStore_Load 仅余文档管理 + release_on_drag_mode
-- [x] B-1/B-2: cmd103/OnEndDrag 显式 AppBar 调用已清除
-- [x] B-3: `test_config_edge` 同一值不触发回调 8/8 PASS
-- [x] C-1: 内存与 ini 一致性（已在 test_config + test_config_edge 验证）
-- [x] C-2: 修改内存 ini 同步（`test_config` #4-#5）
-- [x] C-3: 注释保留（`test_config` #8）
-- [x] C-4: 新 key 追加（`test_config` #6-#7）
-- [x] E-1: 缺失 ini 文件安全降级（`test_config_edge` #1）
-- [x] E-2: Shutdown → Init 不报错（`test_config` #9 + `test_config_edge` #5）
-- [x] E-3: 重启持久化恢复（`test_config_edge` #5）
-- [x] A-3: 冷启动→普通（默认启动即 NONE 模式，已隐藏验证通过）
-- [ ] A-1: 冷启动→贴边（需手动设 ini `shell_resident_mode=2` 后重启）
-- [ ] A-2: 冷启动→浮动（需手动设 ini 浮动坐标后重启）
-- [ ] A-4: 菜单→贴边（需手动操作菜单）
-- [ ] A-5: 菜单→退出贴边（需手动操作）
-- [ ] A-6: 菜单→浮动（需手动操作）
-- [ ] A-7: 拖拽→浮动（需手动操作）
-- [ ] A-8: 托盘隐藏恢复（需手动操作）
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11c-01-1 | syntax check `gcc -fsyntax-only src/app/app.c` | 0 error | ✅ |
+| 11c-01-2 | grep StateStore_Save | 仅余文档管理 | ✅ |
+| 11c-01-3 | A-1 冷启动→贴边（`state.ini` `shell_resident_mode=2`） | 窗口贴右边缘 | ✅ 已手动验证 |
+| 11c-01-4 | A-2 冷启动→浮动（`shell_resident_mode=1` + floating 坐标） | 窗口浮动至坐标位 | ❌ 找不到窗口 |
+| 11c-01-5 | A-3 冷启动→普通（`shell_resident_mode=0`） | 普通窗口 | ✅ |
+| 11c-01-6 | D: titlebar_height / frame_visual_thickness 从 Config 读 | 编译通过 + 启动后生效 | ✅ syntax |
+
+### 11c-02 菜单贴边
+
+```
+// test - plan 11c-02
+```
+
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11c-02-1 | syntax check | 0 error | ✅ |
+| 11c-02-2 | A-4 菜单→贴边 | 窗口贴右边缘，ini 写入 dock 值 | ❌ 需手动 |
+| 11c-02-3 | A-5 菜单→退出贴边 | 窗口移回中央 | ❌ 需手动 |
+
+### 11c-03 菜单浮动
+
+```
+// test - plan 11c-03
+```
+
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11c-03-1 | syntax check | 0 error | ✅ |
+| 11c-03-2 | A-6 菜单→浮动置顶 | 窗口置顶 | ❌ 需手动 |
+
+### 11c-04 cmd103 保存几何
+
+```
+// test - plan 11c-04
+```
+由 11c-02 + 11c-05 覆盖，无独立测试。
+
+### 11c-05 拖拽结束
+
+```
+// test - plan 11c-05
+```
+
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11c-05-1 | syntax check | 0 error | ✅ |
+| 11c-05-2 | A-7 贴边→拖离→浮动 | 浮动置顶，ini 写入几何 | ❌ 需手动 |
+
+### 11c-06 托盘
+
+```
+// test - plan 11c-06
+```
+
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11c-06-1 | syntax check | 0 error | ✅ |
+| 11c-06-2 | A-8 贴边→隐藏→恢复 | 恢复后正确状态 | ❌ 需手动 |
+
+---
+
+## 11d — 回调注册与收尾（`test/test_config_edge.c`）
+
+```
+/* test - plan 11d (callback same-value guard, callback count) */
+```
+
+| 编号 | 操作 | 预期 | 结果 |
+|------|------|------|------|
+| 11d-1 | 相同值 Config_Set | 不触发 callback | ✅ |
+| 11d-2 | 不同值 Config_Set | 触发 callback 一次 | ✅ |
+| 11d-3 | 连续不同值 Config_Set | callback 计数递增 | ✅ |
+| 11d-4 | cmd103/OnEndDrag 显式 AppBar 调用已清除 | grep 确认 | ✅ |
+| 11d-5 | App_EnableCustomChrome 不再调 StateStore | grep 确认 | ✅ |
+
+---
+
+## 总验收
+
+| 分组 | 通过 | 待办 |
+|------|------|------|
+| DEP ini2arr | 4/4 | — |
+| 11a 骨架 | 1/1 | — |
+| 11b ini2arr 接入 | 11/11 | — |
+| 11c-01 启动恢复 | 5/6 | A-2 冷启动浮动（找不到窗口） |
+| 11c-02 菜单贴边 | 1/3 | A-4 A-5 需手动 |
+| 11c-03 菜单浮动 | 1/2 | A-6 需手动 |
+| 11c-05 拖拽 | 1/2 | A-7 需手动 |
+| 11c-06 托盘 | 1/2 | A-8 需手动 |
+| 11d 回调 | 5/5 | — |

@@ -1,4 +1,6 @@
 /* Edge cases for Config: B-3, C-1, C-2, E-1, E-3 */
+/* test - plan 11b edge (missing file, reboot persistence) */
+/* test - plan 11d (callback same-value guard, callback count) */
 #include "src/config/config.h"
 #include <stdio.h>
 #include <string.h>
