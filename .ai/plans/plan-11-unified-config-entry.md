@@ -68,9 +68,9 @@ App_Init → Config_Init → ini2arr("state.ini")
 
 ## 子阶段
 
-| 子阶段 | 目标 | 产出 | 详细文件 |
-|------|------|------|------|
-| 11a | 模块骨架——建文件定接口，编译通过 | config.h + config.c 创建，app.c 编译通过 | `plan-11a-config-skeleton.md` |
+| 子阶段 | 状态 | 目标 | 产出 | 详细文件 |
+|------|------|------|------|------|
+| 11a | 已完成 | 模块骨架——建文件定接口，编译通过 | config.h + config.c 创建，语法验证通过 | `plan-11a-config-skeleton_done.md` |
 | 11b | ini2arr 接入——Config_Init 读盘、Config_Set 写回 | 全部 4 API 实现，Config 单元测试通过 | `plan-11b-ini2arr-wiring.md` |
 | 11c | 迁移写入点——app.c 中 9 处写入点逐一替换 | app.c 中 StateStore_Save 仅剩文档管理一行 | `plan-11c-migrate-writes.md` |
 | 11c-01 | 启动恢复 | Config_Get 替代 StateStore 读启动路径 | `plan-11c-01-startup-restore.md` |
