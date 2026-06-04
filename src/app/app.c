@@ -1656,9 +1656,6 @@ void App_HideToTray(HWND hwnd)
 {
     s_presence_state = SHELL_PRESENCE_HIDDEN_TO_TRAY;
 
-    StateData state;
-    StateStore_Load(&state);
-
     /* 隐藏时释放 AppBar 死区，恢复时自动重建（repair-5-c） */
     if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED &&
         AppBar_IsRegistered(hwnd))
@@ -1669,8 +1666,7 @@ void App_HideToTray(HWND hwnd)
 
     ShowWindow(hwnd, SW_HIDE);
 
-    state.presence_state = (int)SHELL_PRESENCE_HIDDEN_TO_TRAY;
-    StateStore_Save(&state);
+    Config_Set("presence_state", (int)SHELL_PRESENCE_HIDDEN_TO_TRAY);
 }
 
 /* repair-5-c: 拖动/大小调整结束时释放 AppBar */
@@ -1716,10 +1712,7 @@ void App_RestoreFromTray(HWND hwnd)
     SetForegroundWindow(hwnd);
 
     /* Shell-3c_2: 持久化当前 presence 状态 */
-    StateData state;
-    StateStore_Load(&state);
-    state.presence_state = (int)SHELL_PRESENCE_VISIBLE_FRONT;
-    StateStore_Save(&state);
+    Config_Set("presence_state", (int)SHELL_PRESENCE_VISIBLE_FRONT);
 
     /* 如果之前是贴边模式但 AppBar 已被释放，把 resident_mode 切回 NONE 保持状态一致 */
     if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED &&
