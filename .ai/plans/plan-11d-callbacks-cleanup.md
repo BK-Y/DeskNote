@@ -1,15 +1,64 @@
 # Plan-11d — 回调注册与收尾
 
-## 目标
-注册 on_change 回调，让 Config_Set("shell_resident_mode", ...) 自动触发 AppBar ops 和 Z 序调整。
-删除 app.c 中已被 Config 替代的冗余函数。
+## 核心问题
 
-## 前提
-11c 全部 9 步替换完成。app.c 中所有写入点已改用 Config_Set。
+AppBar ops 散落在 11c 的 cmd103/OnEndDrag/启动路径中，未统一到 on_change 触发。`App_WriteShellStateData` 仍在写壳层字段到 StateData。
 
-## 步骤 1：注册 on_change 回调
+## 分析现状
 
-在 `app.c` 中新增：
+- 前置：11c 已完成，app.c 中 9 处写入点全部替换为 Config_Set（仅文档管理 3 处保留 StateStore）
+- 现状：cmd103 进入退出贴边仍保留显式 AppBar_Register/Unregister 调用，和 Config_Set 触发 on_change 后重复执行
+- 产出：on_change 回调接管所有 AppBar ops，残留显式 AppBar 调用被删除，冗余函数被清理
+
+## 方案选型
+
+- **方案 A（选中）：在 app.c 中注册 on_change 回调，当前 app 层直接处理 AppBar ops**
+  - 在 App_Init 中调用 Config_OnChange(OnShellModeChanged)
+  - 删除 11c 迁移各步骤中残留的显式 AppBar_Register/Unregister
+  - 符合当前架构：shell 拆分前 AppBar ops 由 app 层管理是现行事实
+
+- **方案 B（排除）：等 shell 拆分后再注册 on_change**
+  - 不修复双注册问题，保留 11c-02/05 的冗余 AppBar 调用
+  - 排除理由：长期存在双注册风险，AppBar_Register 重复调用可能产生不可预测的系统行为
+
+## 拆解执行
+
+### 主链路
+
+```
+Config_Set("shell_resident_mode", EDGE_RESERVED)
+  ├─ 更新内存表
+  ├─ ini2arr_write → .tmp → rename → state.ini
+  └─ on_change → OnShellModeChanged
+       ├─ AppBar_Register + AppBar_SetPosition
+       └─ SetWindowPos(HWND_NOTOPMOST)  /* exit old mode */
+
+Config_Set("shell_resident_mode", NONE)
+  └─ on_change → AppBar_Unregister
+```
+
+## 设定边界
+
+### 范围
+
+- 注册 on_change 回调使 Config_Set 自动触发 AppBar ops
+- 删除 11c 迁移步骤中残留的显式 AppBar_Register/Unregister 调用
+- 清理 App_WriteShellStateData 在 App_EnableCustomChrome 中的调用
+- 删除 g_app.shell.resident_mode 的直接写入（已由 Config_Set 接管）
+
+### 不做
+
+- 不动 state_store.c / state_store.h
+- 不动 App_SaveCurrentDocument 中的文档字段 StateStore_Save
+- 不删除 App_TryRegisterAppBarFromState（11c-01 已简化，待 shell 拆分后移入 shell 模块）
+
+### 不修改的文件
+
+src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 落地方案
+
+### on_change 回调函数
 
 ```c
 static void OnShellModeChanged(const char* key, int old_val, int new_val)
@@ -26,8 +75,8 @@ static void OnShellModeChanged(const char* key, int old_val, int new_val)
 
     /* enter new mode */
     if (new_val == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED) {
-        int edge = Config_Get(KEY_DOCK_EDGE, APP_DOCK_RIGHT);
-        int thick = Config_Get(KEY_DOCK_THICKNESS, 240);
+        int edge = Config_Get("dock_edge", APP_DOCK_RIGHT);
+        int thick = Config_Get("dock_thickness", 240);
         AppBar_Register(hwnd);
         AppBar_SetPosition(hwnd, (AppDockEdge)edge, thick);
     }
@@ -36,66 +85,35 @@ static void OnShellModeChanged(const char* key, int old_val, int new_val)
 }
 ```
 
-在 `App_Init` 中注册：
+在 `App_Init` 中（`AppBar_TryRegisterAppBarFromState(hwnd)` 之前）注册：
 
 ```c
 Config_OnChange(OnShellModeChanged);
 ```
 
-## 步骤 2：移除各迁移步骤中残留的 AppBar ops 调用
+## 验收标准
 
-回顾 11c 中 9 步，部分步骤还保留了显式 AppBar ops 调用（用于保证每步独立验证）。11d 完成后，这些可以从调用点删除，因为 Config_Set 已自动触发。
+- [ ] `Config_Set("shell_resident_mode", EDGE_RESERVED)` 自动触发 AppBar_Register + AppBar_SetPosition
+- [ ] `Config_Set("shell_resident_mode", NONE)` 自动触发 AppBar_Unregister
+- [ ] cmd103/OnEndDrag 中不再有显式 AppBar_Register/Unregister（已由 on_change 接管）
+- [ ] `App_WriteShellStateData` 在 App_EnableCustomChrome 中不再调用（但函数体保留，待后续）
+- [ ] 分层核实：on_change 回调位于 app 层，暂不移动（shell 拆分后移入 shell 模块）
 
-| 11c 子计划 | 可删除的代码 |
-|---------|------------|
-| 11c-01（启动恢复） | `AppBar_Register + AppBar_SetPosition` — on_change 未被触发（启动只读），保留 |
-| 11c-02 Step A（cmd103 进入贴边） | `AppBar_Register + AppBar_SetPosition` → 由 on_change 接管 |
-| 11c-02 Step B（cmd103 退出贴边） | `AppBar_Unregister` → 由 on_change 接管 |
-| 11c-05 Step A（拖拽→浮动） | `AppBar_Unregister` → 由 on_change 接管 |
-| 11c-05 Step B（拖拽→普通） | `AppBar_Unregister` → 由 on_change 接管 |
+## 推进步骤
 
-## 步骤 3：删除冗余函数
+### 方案 A：在 app.c 中注册 on_change 回调 [selected]
 
-| 删除 | 原因 |
-|---|---|
-| `App_TryRegisterAppBarFromState` | 启动恢复已改用 Config_Get，不再有单独的"从 state 恢复"函数 |
-| `App_WriteShellStateData` | 不再需要把 g_app.shell 字段写回 StateData（Config 层直接管行级写） |
-| `AppBar_ReadDockConfig` 中的 StateStore_Load | 改为 Config_Get |
+| 步骤 | 操作内容 | 操作结果 | 验证方式 |
+|------|---------|---------|---------|
+| 1 | 在 app.c 的 App_Init 中，App_TryRegisterAppBarFromState 之前调用 `Config_OnChange(OnShellModeChanged)` | config callback 注册完成 | `gcc -fsyntax-only` 通过 |
+| 2 | 在 app.c 中添加 `OnShellModeChanged` 回调函数定义 | 回调函数存在 | 同上 |
+| 3 | 删除 cmd103 进入贴边分支中的显式 `AppBar_Register + AppBar_SetPosition` | 进入贴边只调 Config_Set，on_change 自动触发 AppBar 注册 | `git diff` 确认删除 |
+| 4 | 删除 cmd103 退出贴边分支中的显式 `AppBar_Unregister` | 退出贴边只调 Config_Set，on_change 自动触发 AppBar 注销 | `git diff` 确认删除 |
+| 5 | 删除 App_OnEndDrag mode=1 中的显式 `AppBar_Unregister` | 同理由 on_change 接管 | `git diff` 确认删除 |
+| 6 | 删除 App_OnEndDrag mode=2 中的显式 `AppBar_Unregister` | 同上 | `git diff` 确认删除 |
+| 7 | 在 App_EnableCustomChrome 中移除 App_WriteShellStateData 调用 | App_WriteShellStateData 不再通过 App_EnableCustomChrome 写入壳层字段 | `grep "App_WriteShellStateData" src/app/app.c` 仅剩文档管理 1 处 |
+| 8 | 验证：全部 6 项回归测试 | 冷启动贴边/浮动、菜单切贴边/浮动、拖拽、托盘 | 见验证表 |
 
-## 步骤 4：删除 g_app.shell.resident_mode 的直接写
+### 方案 B：等 shell 拆分（备选）
 
-能删除的直接写入点（11c 已保留兼容，本步骤清掉）：
-
-| 位置 | 当前 | 改为 |
-|------|------|------|
-| cmd103 | `g_app.shell.resident_mode = EDGE_RESERVED` | Config_Set 已触发，不需要重复写 |
-| cmd103 退出 | `g_app.shell.resident_mode = NONE` | 同 |
-| App_OnEndDrag | `g_app.shell.resident_mode = FLOATING` | 同 |
-
-保留 `g_app.shell.resident_mode` 作为运行时副本（多处直接读它做菜单复选框判断等），但写入口统一到 on_change 回调中。
-
-## 验证
-
-全部功能逐一回归：
-
-| 功能 | 操作 | 预期 |
-|------|------|------|
-| 冷启动贴边 | shell_resident_mode=2 重启 | AppBar 注册，贴边 |
-| 冷启动浮动 | shell_resident_mode=1 + floating 坐标 | 窗口浮动到记录位置 |
-| 菜单→贴边 | 点"贴边占位" | Config_Set + on_change → AppBar ops |
-| 菜单→浮动 | 点"浮动置顶" | Config_Set + on_change → HWND_TOPMOST |
-| 拖拽→浮动 | 贴边拖开 | Config_Set + on_change → 释放 AppBar + 浮动 |
-| 托盘隐藏/恢复 | 贴边→隐藏→恢复 | 恢复后状态正确 |
-
-## 分层核实
-
-- AppBar ops 集中到 on_change 回调中（位于 app 层，直到 shell 拆分完成后移入 shell 模块）
-- 本子计划不修改：src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
-- 删除的 `App_TryRegisterAppBarFromState` 和 `App_WriteShellStateData` 属于 app 层内部重构
-
-## 风险
-
-- 删除 `g_app.shell.resident_mode` 的直接写后，如果某个路径遗漏了 Config_Set 调用，模式不会更新。验证表 6 项全部 pass 即可确认。
-- 删除的文件 `App_TryRegisterAppBarFromState` 后续可能被 Plan-10 子阶段引用，删除时需确认所有引用者已替换。
-
-最终状态：app.c 中对 g_app.shell.resident_mode 的写入全部通过 Config_Set 路径，AppBar ops 全部通过 on_change 回调触发，StateStore_Save 仅剩 App_SaveCurrentDocument 中的文档字段。
+（本方案未选中，推进步骤为空）

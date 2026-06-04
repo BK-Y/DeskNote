@@ -72,13 +72,13 @@ App_Init → Config_Init → ini2arr("state.ini")
 |------|------|------|------|------|
 | 11a | 已完成 | 模块骨架——建文件定接口，编译通过 | config.h + config.c 创建，语法验证通过 | `plan-11a-config-skeleton_done.md` |
 | 11b | 已完成 | ini2arr 接入——Config_Init 读盘、Config_Set 写回 | 全部 4 API 实现，Config 单元测试通过 | `plan-11b-ini2arr-wiring_done.md` |
-| 11c | 迁移写入点——app.c 中 9 处写入点逐一替换 | app.c 中 StateStore_Save 仅剩文档管理一行 | `plan-11c-migrate-writes.md` |
-| 11c-01 | 启动恢复 | Config_Get 替代 StateStore 读启动路径 | `plan-11c-01-startup-restore.md` |
-| 11c-02 | 菜单进入/退出贴边 | cmd103 改用 Config_Set | `plan-11c-02-menu-edge-reserved.md` |
-| 11c-03 | 菜单浮动置顶 | cmd102 改用 Config_Set | `plan-11c-03-menu-floating.md` |
-| 11c-04 | cmd103 保存浮动几何 | cmd103 浮动几何改用 Config_Set | `plan-11c-04-cmd103-save-geom.md` |
-| 11c-05 | 拖拽结束 | App_OnEndDrag 改用 Config_Set | `plan-11c-05-drag-end.md` |
-| 11c-06 | 托盘隐藏/恢复 | Hide/Restore 改用 Config_Set | `plan-11c-06-tray-hide-restore.md` |
+| 11c | 已完成 | 迁移写入点——app.c 中 9 处写入点逐一替换 | app.c 中 StateStore_Save 仅剩文档管理一行 | `plan-11c-migrate-writes_done.md` |
+| 11c-01 | 已完成 | 启动恢复 | Config_Get 替代 StateStore 读启动路径 | `plan-11c-01-startup-restore_done.md` |
+| 11c-02 | 已完成 | 菜单进入/退出贴边 | cmd103 改用 Config_Set | `plan-11c-02-menu-edge-reserved_done.md` |
+| 11c-03 | 已完成 | 菜单浮动置顶 | cmd102 改用 Config_Set | `plan-11c-03-menu-floating_done.md` |
+| 11c-04 | 已完成 | cmd103 保存浮动几何 | cmd103 浮动几何改用 Config_Set | `plan-11c-04-cmd103-save-geom_done.md` |
+| 11c-05 | 已完成 | 拖拽结束 | App_OnEndDrag 改用 Config_Set | `plan-11c-05-drag-end_done.md` |
+| 11c-06 | 已完成 | 托盘隐藏/恢复 | Hide/Restore 改用 Config_Set | `plan-11c-06-tray-hide-restore_done.md` |
 | 11d | 回调注册与收尾——on_change 绑定、砍冗余函数 | 6 项回归全部通过 | `plan-11d-callbacks-cleanup.md` |
 
 ## 改写范围
