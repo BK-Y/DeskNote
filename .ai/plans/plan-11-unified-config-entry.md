@@ -79,7 +79,7 @@ App_Init → Config_Init → ini2arr("state.ini")
 | 11c-04 | 已完成 | cmd103 保存浮动几何 | cmd103 浮动几何改用 Config_Set | `plan-11c-04-cmd103-save-geom_done.md` |
 | 11c-05 | 已完成 | 拖拽结束 | App_OnEndDrag 改用 Config_Set | `plan-11c-05-drag-end_done.md` |
 | 11c-06 | 已完成 | 托盘隐藏/恢复 | Hide/Restore 改用 Config_Set | `plan-11c-06-tray-hide-restore_done.md` |
-| 11d | 回调注册与收尾——on_change 绑定、砍冗余函数 | 6 项回归全部通过 | `plan-11d-callbacks-cleanup.md` |
+| 11d | 已完成 | 回调注册与收尾——on_change 绑定、砍冗余函数 | 6 项回归全部通过 | `plan-11d-callbacks-cleanup_done.md` |
 
 ## 改写范围
 
