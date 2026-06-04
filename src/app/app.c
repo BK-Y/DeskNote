@@ -1422,14 +1422,10 @@ int App_SubmitShellCommand(AppShellCommand command)
                     RECT rect;
                     if (GetWindowRect(g_app.hwnd, &rect))
                     {
-                        StateData st;
-                        StateStore_Load(&st);
-                        st.last_floating_left   = rect.left;
-                        st.last_floating_top    = rect.top;
-                        st.last_floating_width  = rect.right - rect.left;
-                        st.last_floating_height = rect.bottom - rect.top;
-                        StateStore_Save(&st);
-                        R5A_WriteLog(R5A_LOG_PREFIX L"cmd103: saved last_floating_* from topmost mode\n");
+                        Config_Set("last_floating_left", rect.left);
+                        Config_Set("last_floating_top", rect.top);
+                        Config_Set("last_floating_width", rect.right - rect.left);
+                        Config_Set("last_floating_height", rect.bottom - rect.top);
                     }
 
                     SetWindowPos(g_app.hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
@@ -1692,24 +1688,22 @@ void App_OnEndDrag(HWND hwnd)
     {
         RECT rc;
         GetWindowRect(hwnd, &rc);
-        state.last_floating_left   = rc.left;
-        state.last_floating_top    = rc.top;
-        state.last_floating_width  = rc.right - rc.left;
-        state.last_floating_height = rc.bottom - rc.top;
-        state.shell_resident_mode  = APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST;
-        StateStore_Save(&state);
-        AppBar_Unregister(hwnd);
+        Config_Set("last_floating_left", rc.left);
+        Config_Set("last_floating_top", rc.top);
+        Config_Set("last_floating_width", rc.right - rc.left);
+        Config_Set("last_floating_height", rc.bottom - rc.top);
+        Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST);
         g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST;
+        AppBar_Unregister(hwnd);
         SetWindowPos(hwnd, HWND_TOPMOST, rc.left, rc.top,
                      rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER);
         R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> floating_topmost\n");
     }
     else if (state.release_on_drag_mode == 2)
     {
-        state.shell_resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
-        StateStore_Save(&state);
-        AppBar_Unregister(hwnd);
+        Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_NONE);
         g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
+        AppBar_Unregister(hwnd);
         R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> none\n");
     }
     App_UpdateTrayTip(hwnd);  /* Shell-5c */
