@@ -1,4 +1,5 @@
 #include "app.h"
+#include "../config/config.h"
 #include "../editor/editor.h"
 #include "../platform/win32/nonclient.h"
 #include "../platform/win32/window.h"
@@ -138,10 +139,8 @@ static void App_ApplyShellStateData(const StateData* state)
     /* 主线产品永久使用 frameless，不从持久化状态读取 use_custom_chrome。
      * 运行态值始终由 App_InitShellStateDefaults 初始化为 1。
      * 底层 Platform_SetFrameless 接口保留供扩展场景使用。 */
-    if (state->titlebar_height > 0)
-        g_app.shell.titlebar_height = state->titlebar_height;
-    if (state->frame_visual_thickness > 0)
-        g_app.shell.frame_visual_thickness = state->frame_visual_thickness;
+    g_app.shell.titlebar_height = Config_Get("titlebar_height", CONFIG_DEFAULT_TITLEBAR_HEIGHT);
+    g_app.shell.frame_visual_thickness = Config_Get("frame_visual_thickness", CONFIG_DEFAULT_FRAME_VISUAL_THICKNESS);
 
     switch (state->shell_resident_mode)
     {
@@ -772,30 +771,17 @@ static void App_EnsureCaretVisible(void)
 /* repair-5-a-1: 从持久化状态读取配置并尝试注册 AppBar（仅 EDGE_RESERVED 模式） */
 static void App_TryRegisterAppBarFromState(HWND hwnd)
 {
-    StateData state;
-    StateStore_Load(&state);
-
-    if (state.shell_resident_mode != APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+    int mode = Config_Get("shell_resident_mode", 0);
+    if (mode != APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
         return;
 
-    AppDockEdge edge = (AppDockEdge)ClampDockEdge(state.dock_edge);
-    int thickness = ClampDockThickness(state.dock_thickness);
-
-    wchar_t buf[256];
-    swprintf(buf, 256, R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: edge=%d thickness=%d\n",
-             (int)edge, thickness);
-    R5A_WriteLog(buf);
+    int edge = Config_Get("dock_edge", APP_DOCK_RIGHT);
+    int thickness = Config_Get("dock_thickness", 240);
 
     if (AppBar_Register(hwnd) == 0)
     {
-        AppBar_SetPosition(hwnd, edge, thickness);
+        AppBar_SetPosition(hwnd, (AppDockEdge)edge, thickness);
         g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_EDGE_RESERVED;
-        R5A_WriteLog(R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: success\n");
-    }
-    else
-    {
-        R5A_WriteLog(R5A_LOG_PREFIX L"App_TryRegisterAppBarFromState: AppBar_Register failed, state preserved\n");
-        /* 失败保留 state，由 5b 重试 */
     }
 }
 
@@ -866,9 +852,8 @@ int App_Init(HWND hwnd)
 
     /* Shell-3c_2: 启动时恢复上次的 presence 状态 */
     {
-        StateData state;
-        StateStore_Load(&state);
-        if (state.presence_state == 1) /* hidden_to_tray */
+        int presence = Config_Get("presence_state", 0);
+        if (presence == 1) /* hidden_to_tray */
         {
             ShowWindow(hwnd, SW_HIDE);
         }
@@ -876,17 +861,18 @@ int App_Init(HWND hwnd)
 
     /* Shell-4a_2: 启动时恢复浮动置顶状态 */
     {
-        StateData state;
-        StateStore_Load(&state);
-        if (state.shell_resident_mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+        int mode = Config_Get("shell_resident_mode", 0);
+        if (mode == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
         {
             SetWindowPos(hwnd, HWND_TOPMOST,
-                        state.last_floating_left,
-                        state.last_floating_top,
-                        state.last_floating_width,
-                        state.last_floating_height,
+                        Config_Get("last_floating_left", 0),
+                        Config_Get("last_floating_top", 0),
+                        Config_Get("last_floating_width", 240),
+                        Config_Get("last_floating_height", 388),
                         SWP_NOZORDER);
         }
+
+        g_app.shell.resident_mode = (AppShellResidentMode)mode;
     }
 
     /* repair-5-a-1: 启动时尝试恢复贴边占位 */
