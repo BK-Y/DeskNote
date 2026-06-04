@@ -1394,18 +1394,15 @@ int App_SubmitShellCommand(AppShellCommand command)
         if (cmd == 100) /* 隐藏到托盘 */
             App_HideToTray(g_app.hwnd);
         else if (cmd == 102) /* 浮动置顶 */
+        /* 提交切换命令，由 window.c 收束执行 SetWindowPos */
         {
-            /* Shell-4a_2: 先保存当前窗口位置到 state.ini */
             RECT rect;
             if (GetWindowRect(g_app.hwnd, &rect))
             {
-                StateData state;
-                StateStore_Load(&state);
-                state.last_floating_left   = rect.left;
-                state.last_floating_top    = rect.top;
-                state.last_floating_width  = rect.right - rect.left;
-                state.last_floating_height = rect.bottom - rect.top;
-                StateStore_Save(&state);
+                Config_Set("last_floating_left", rect.left);
+                Config_Set("last_floating_top", rect.top);
+                Config_Set("last_floating_width", rect.right - rect.left);
+                Config_Set("last_floating_height", rect.bottom - rect.top);
             }
             /* 提交切换命令，由 window.c 收束执行 SetWindowPos */
             App_SubmitShellCommand(APP_SHELL_COMMAND_TOGGLE_FLOATING_TOPMOST);
