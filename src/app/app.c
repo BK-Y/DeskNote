@@ -1441,37 +1441,28 @@ int App_SubmitShellCommand(AppShellCommand command)
                 }
 
                 g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_EDGE_RESERVED;
-
-                /* 保存 dock 配置到 state.ini */
-                StateData state;
-                StateStore_Load(&state);
-                state.dock_edge = APP_DOCK_RIGHT;
-                state.dock_thickness = 240;
-                StateStore_Save(&state);
+                Config_Set("dock_edge", APP_DOCK_RIGHT);
+                Config_Set("dock_thickness", 240);
+                Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_EDGE_RESERVED);
             }
 
-            /* 同步执行 AppBar 注册/注销，不经过异步命令队列 */
-            HWND hwnd = g_app.hwnd;
+            HWND hwnd2 = g_app.hwnd;
             if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
             {
-                if (!AppBar_IsRegistered(hwnd))
+                if (!AppBar_IsRegistered(hwnd2))
                 {
-                    OutputDebugStringW(R5A_LOG_PREFIX L"cmd103: registering AppBar (sync)\n");
-                    if (AppBar_Register(hwnd) == 0)
-                        AppBar_SetPosition(hwnd, APP_DOCK_RIGHT, 240);
+                    if (AppBar_Register(hwnd2) == 0)
+                        AppBar_SetPosition(hwnd2, APP_DOCK_RIGHT, 240);
                 }
             }
             else
             {
-                if (AppBar_IsRegistered(hwnd))
-                {
-                    OutputDebugStringW(R5A_LOG_PREFIX L"cmd103: unregistering AppBar (sync)\n");
-                    AppBar_Unregister(hwnd);
-                }
-                /* 退出贴边后把窗口移离边缘，避免下次注册时位置冲突 */
+                Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_NONE);
+                if (AppBar_IsRegistered(hwnd2))
+                    AppBar_Unregister(hwnd2);
                 {
                     RECT rc;
-                    GetWindowRect(hwnd, &rc);
+                    GetWindowRect(hwnd2, &rc);
                     int w = rc.right - rc.left;
                     int h = rc.bottom - rc.top;
                     int x = rc.left;
@@ -1479,15 +1470,14 @@ int App_SubmitShellCommand(AppShellCommand command)
                     SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0);
                     int cw = rc.right - rc.left;
                     int ch = rc.bottom - rc.top;
-                    /* 如果窗口在右边缘或右下角，移到屏幕中央 */
                     if (x + w >= rc.right - 10)
                         x = (cw - w) / 2;
                     if (y + h >= rc.bottom - 10)
                         y = (ch - h) / 2;
-                    MoveWindow(hwnd, x, y, w, h, TRUE);
+                    MoveWindow(hwnd2, x, y, w, h, TRUE);
                 }
             }
-            App_UpdateTrayTip(hwnd);  /* Shell-5c: 提示文字同步 resident_mode */
+            App_UpdateTrayTip(hwnd2);  /* Shell-5c: 提示文字同步 resident_mode */
         }
         else if (cmd == 101) /* 关于 */
             MessageBoxW(g_app.hwnd,
