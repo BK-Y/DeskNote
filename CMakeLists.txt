@@ -30,6 +30,8 @@ set(SOURCES
     src/storage/note_store.c
     src/storage/state_store.c
     src/storage/storage_write.c
+    src/config/config.c
+    src/utils/ini2arr.c
     src/ui/editor_view.c
     src/ui/titlebar.c
     src/ui/button.c
