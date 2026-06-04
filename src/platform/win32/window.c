@@ -217,7 +217,7 @@ int Window_Run(void)
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = instance;
     wc.lpszClassName = L"DeskNoteWindow";
-    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
+    wc.hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_ARROW);
     wc.hbrBackground = NULL;  /* 背景由 Render_Clear 完全掌控，避免 BeginPaint 预填白色 */
 
     if (!RegisterClassW(&wc))

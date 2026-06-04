@@ -1603,7 +1603,7 @@ int App_InitTrayIcon(HWND hwnd)
 
     hIcon = LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(1));
     if (hIcon == NULL)
-        hIcon = LoadIconW(NULL, IDI_APPLICATION);
+        hIcon = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
     nid.hIcon = hIcon;
 
     App_UpdateTrayTip(hwnd);  /* Shell-5c: 启动时设置初始提示 */
