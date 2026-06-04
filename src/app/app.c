@@ -790,6 +790,28 @@ int App_Run(void)
     return Window_Run();
 }
 
+/* Plan-11d: Config on_change 回调 — 统一处理 AppBar ops */
+static void OnShellModeChanged(const char* key, int old_val, int new_val)
+{
+    (void)key;
+    if (old_val == new_val) return;
+    HWND hwnd = g_app.hwnd;
+
+    if (old_val == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+        AppBar_Unregister(hwnd);
+    if (old_val == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+
+    if (new_val == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED) {
+        int edge = Config_Get("dock_edge", APP_DOCK_RIGHT);
+        int thick = Config_Get("dock_thickness", 240);
+        AppBar_Register(hwnd);
+        AppBar_SetPosition(hwnd, (AppDockEdge)edge, thick);
+    }
+    if (new_val == APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST)
+        SetWindowPos(hwnd, HWND_TOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+}
+
 int App_Init(HWND hwnd)
 {
     if (hwnd == NULL)
@@ -874,6 +896,9 @@ int App_Init(HWND hwnd)
 
         g_app.shell.resident_mode = (AppShellResidentMode)mode;
     }
+
+    /* Plan-11d: 注册 on_change 回调 */
+    Config_OnChange(OnShellModeChanged);
 
     /* repair-5-a-1: 启动时尝试恢复贴边占位 */
     App_TryRegisterAppBarFromState(hwnd);
@@ -1442,17 +1467,11 @@ int App_SubmitShellCommand(AppShellCommand command)
             HWND hwnd2 = g_app.hwnd;
             if (g_app.shell.resident_mode == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
             {
-                if (!AppBar_IsRegistered(hwnd2))
-                {
-                    if (AppBar_Register(hwnd2) == 0)
-                        AppBar_SetPosition(hwnd2, APP_DOCK_RIGHT, 240);
-                }
+                /* AppBar 注册由 on_change 回调自动处理 */
             }
             else
             {
                 Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_NONE);
-                if (AppBar_IsRegistered(hwnd2))
-                    AppBar_Unregister(hwnd2);
                 {
                     RECT rc;
                     GetWindowRect(hwnd2, &rc);
@@ -1513,20 +1532,9 @@ int App_GetShellCommandGroup(AppShellCommand command, AppTitlebarCommandGroup* o
 
 int App_EnableCustomChrome(int enable)
 {
-    StateData state;
     int result = 0;
 
     g_app.shell.use_custom_chrome = enable ? 1 : 0;
-
-    /* Read existing state if available, then write shell fields and persist */
-    memset(&state, 0, sizeof(state));
-    (void)StateStore_Load(&state);
-    App_WriteShellStateData(&state);
-    if (StateStore_Save(&state) != 0)
-    {
-        App_ReportStorageFailure(L"DeskNote: failed to save state.ini when toggling custom chrome.\n");
-        result = 1;
-    }
 
     /* Apply platform change if window exists */
     if (g_app.hwnd != NULL)
@@ -1690,7 +1698,7 @@ void App_OnEndDrag(HWND hwnd)
         Config_Set("last_floating_height", rc.bottom - rc.top);
         Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST);
         g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_FLOATING_TOPMOST;
-        AppBar_Unregister(hwnd);
+        /* AppBar_Unregister 由 on_change 回调自动处理 */
         SetWindowPos(hwnd, HWND_TOPMOST, rc.left, rc.top,
                      rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER);
         R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> floating_topmost\n");
@@ -1699,7 +1707,7 @@ void App_OnEndDrag(HWND hwnd)
     {
         Config_Set("shell_resident_mode", APP_SHELL_RESIDENT_MODE_NONE);
         g_app.shell.resident_mode = APP_SHELL_RESIDENT_MODE_NONE;
-        AppBar_Unregister(hwnd);
+        /* AppBar_Unregister 由 on_change 回调自动处理 */
         R5A_WriteLog(R5A_LOG_PREFIX L"App_OnEndDrag: released AppBar -> none\n");
     }
     App_UpdateTrayTip(hwnd);  /* Shell-5c */
