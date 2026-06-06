@@ -1,4 +1,4 @@
-# phase-11-editor-click-to-position — 点击定位光标
+# Plan-12-editor-00 — 点击定位光标
 
 ## ① 核心问题
 
@@ -76,3 +76,22 @@
 
 - app 层调 `Render_HitTestPoint`（render 公开接口）+ editor 设置光标（editor 公开接口）+ 平台 `SetCaretPos`（平台公开接口）
 - 无反向调用，不修改 render/editor 内部状态
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 1-1~1-3（正常路径）全部通过
+- [ ] [human] 测试 1-4~1-5（边界条件）全部通过
+- [ ] [human] 测试 1-6（错误处理）全部通过
+- [ ] [human] 测试 1-7~1-9（回归）全部通过
+
+### GATE 0 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

@@ -1,4 +1,4 @@
-# phase-11-editor-text-selection — 文本选择（拖拽 + 双击选词）
+# Plan-12-editor-01 — 文本选择（拖拽 + 双击选词）
 
 ## ① 核心问题
 编辑器支持单点光标，但无法用鼠标或键盘选中一段文本。用户无法复制内容、删除一段文字。
@@ -98,3 +98,23 @@ typedef struct {
 - editor 持有选区状态
 - `EditorView_Draw` 根据选区坐标调 `Render_FillRect`（render 不知道 selection）
 - `platform/*`、`storage/*` 零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 2-1~2-3（正常路径）全部通过
+- [ ] [human] 测试 2-4~2-5（边界条件）全部通过
+- [ ] [human] 测试 2-6（错误处理）全部通过
+- [ ] [human] 测试 2-7~2-9（回归）全部通过
+- [ ] [human] 测试 2-10（集成）全部通过
+
+### GATE 1 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

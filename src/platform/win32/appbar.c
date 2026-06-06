@@ -35,32 +35,30 @@ int AppBar_Unregister(HWND hwnd)
     if (!s_appbar.registered)
         return 0;
 
-    /* Workaround: 先把 AppBar 劈到一条不冲突的边（底部），再移除，
-     * 避免 ABM_REMOVE 偶尔不释放原边保留区 */
-    s_appbar.data.uEdge = (UINT)APP_DOCK_BOTTOM;
-    SHAppBarMessage(ABM_SETPOS, &s_appbar.data);
+    /* 直接移除当前 AppBar，避免“先挪边再移除”引入额外保留区 */
+    {
+        APPBARDATA data = s_appbar.data;
+        s_appbar.registered = 0;
+        SHAppBarMessage(ABM_REMOVE, &data);
+    }
 
-    SHAppBarMessage(ABM_REMOVE, &s_appbar.data);
-    s_appbar.registered = 0;
-
-    /* 强制 Windows 刷新工作区 */
-    SystemParametersInfoW(SPI_SETWORKAREA, 0, NULL, 0);
     return 0;
 }
 
-/* Shell-5b 反馈循环防护：标记当前工作区变化是否由我们自己的 ABM_SETPOS 触发 */
-static int s_own_wa_change = 0;
+/* Shell-5b 反馈循环防护：计数器而非布尔值，避免多条 SPI_SETWORKAREA 漏消费 */
+static int s_own_wa_change_count = 0;
 
 void AppBar_MarkOwnWorkareaChange(void)
 {
-    s_own_wa_change = 1;
+    if (s_own_wa_change_count < 8)
+        s_own_wa_change_count += 1;
 }
 
 int AppBar_ConsumeOwnWorkareaChange(void)
 {
-    if (s_own_wa_change)
+    if (s_own_wa_change_count > 0)
     {
-        s_own_wa_change = 0;
+        s_own_wa_change_count -= 1;
         return 1;
     }
     return 0;
@@ -137,9 +135,16 @@ int AppBar_ReRegister(HWND hwnd)
         return 0;
 
     edge = (AppDockEdge)s_appbar.data.uEdge;
-    thickness = s_appbar.data.rc.right - s_appbar.data.rc.left;
+    if (edge == APP_DOCK_TOP || edge == APP_DOCK_BOTTOM)
+        thickness = s_appbar.data.rc.bottom - s_appbar.data.rc.top;
+    else
+        thickness = s_appbar.data.rc.right - s_appbar.data.rc.left;
 
-    s_appbar.registered = 0;
+    if (thickness <= 0)
+        thickness = 240;
+
+    /* 先 REMOVE 再 NEW，避免重复注册导致保留区残留 */
+    AppBar_Unregister(hwnd);
     if (AppBar_Register(hwnd) != 0)
         return 1;
 

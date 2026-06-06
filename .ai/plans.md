@@ -184,28 +184,29 @@ Plan 编写与审查规则见：
 
 | Plan | 状态 | 主题 | 详细文件 |
 |------|------|------|------|
-| 1 | 已完成 | 恢复可编译骨架 | `./plans/done/plan-10-shell-1_done.md` |
-| 2 | 已完成 | 打通显示链路 | `./plans/done/plan-10-shell-2_done.md` |
-| 3 | 已完成 | 打通输入链路 | `./plans/done/plan-10-shell-3_done.md` |
-| 4 | 已完成 | 接入存储 | `./plans/done/plan-10-shell-4_done.md` |
-| 5a | 已完成主体 | 补基础交互主链 | `./plans/done/plan-10-shell-5a_done.md` |
-| 5b | 已完成 | 收紧基础交互收尾 | `./plans/done/plan-10-shell-5b_done.md` |
-| 5c | 已完成 | 收口纵向移动内聚重构 | `./plans/done/plan-10-shell-5c_done.md` |
-| 5d | 已完成 | 做基础交互验收与稳定化 | `./plans/done/plan-10-shell-5d_done.md` |
-| 6 | 已完成 | 保存安全：建立内存落盘模型 | `./plans/done/plan-10-shell-6_done.md` |
-| 7 | 已完成 | 保存安全：基于内存模型接入自动保存 | `./plans/done/plan-10-shell-7_done.md` |
-| 8 | 已完成 | 保存安全：基于内存模型接入原子保存 | `./plans/done/plan-10-shell-8_done.md` |
-| 9 | 已完成 | 保存安全：基于内存模型接入崩溃恢复 | `./plans/done/plan-10-shell-9_done.md` |
-| Shell-10 | 进行中 | 便签窗口壳层（子阶段分解见下方） | `./plans/plan-10-shell-index.md` |
-| 11 | 后续 | 补基础选择 | `./plans/plan-11.md` |
-| 12 | 后续 | 补高级浏览 | `./plans/plan-12.md` |
-| 13 | 后续 | 补编辑命令面 | `./plans/plan-13.md` |
-| 14 | 后续 | 补 Markdown 交互 | `./plans/plan-14.md` |
-| 15 | 后续 | 补高级编辑 | `./plans/plan-15.md` |
+| 1 | 已完成 | 恢复可编译骨架 | `./plans/archive/done/plan-10-shell-1_done.md` |
+| 2 | 已完成 | 打通显示链路 | `./plans/archive/done/plan-10-shell-2_done.md` |
+| 3 | 已完成 | 打通输入链路 | `./plans/archive/done/plan-10-shell-3_done.md` |
+| 4 | 已完成 | 接入存储 | `./plans/archive/done/plan-10-shell-4_done.md` |
+| 5a | 已完成主体 | 补基础交互主链 | `./plans/archive/done/plan-10-shell-5a_done.md` |
+| 5b | 已完成 | 收紧基础交互收尾 | `./plans/archive/done/plan-10-shell-5b_done.md` |
+| 5c | 已完成 | 收口纵向移动内聚重构 | `./plans/archive/done/plan-10-shell-5c_done.md` |
+| 5d | 已完成 | 做基础交互验收与稳定化 | `./plans/archive/done/plan-10-shell-5d_done.md` |
+| 6 | 已完成 | 保存安全：建立内存落盘模型 | `./plans/archive/done/plan-10-shell-6_done.md` |
+| 7 | 已完成 | 保存安全：基于内存模型接入自动保存 | `./plans/archive/done/plan-10-shell-7_done.md` |
+| 8 | 已完成 | 保存安全：基于内存模型接入原子保存 | `./plans/archive/done/plan-10-shell-8_done.md` |
+| 9 | 已完成 | 保存安全：基于内存模型接入崩溃恢复 | `./plans/archive/done/plan-10-shell-9_done.md` |
+| Shell-10 | 进行中 | 便签窗口壳层（子阶段分解见下方） | `./plans/archive/done/shell/` |
+| 11 | 后续 | 补基础选择 | `./plans/plan-11-index.md` |
+| 12 | 后续 | 补高级浏览 | `./plans/plan-12-markdown-01-hit-test.md` |
+| 13 | 后续 | 统一配置入口 | `./plans/plan-13-unified-config-entry.md` |
+| 14 | 后续 | 补编辑命令面 | — |
+| 15 | 后续 | 补 Markdown 交互 | — |
+| 16 | 后续 | 补高级编辑 | — |
 
 ### Shell 壳层子阶段完成明细
 
-以下子阶段均在 `./plans/done/` 下有 `_done.md` 文件佐证：
+以下子阶段均在 `./plans/archive/done/` 下有 `_done.md` 文件佐证：
 
 ```
 Shell-1a ── 壳层状态与标题栏命令模型                          ✅ 已完成
@@ -284,7 +285,7 @@ Shell-5c  ── 常驻模式状态提示                                    ❌
 当前最该读的文件：
 
 - `./plans/plan-10-shell-index.md` — 壳层子阶段索引（需先更新状态表）
-- `./plans/done/plan-10-shell-3c_2_done.md` — 最后一个完成的壳层子阶段
+- `./plans/archive/done/shell/plan-10-shell-3c_2_done.md` — 最后一个完成的壳层子阶段
 - `./plans/plan-10-shell-5a.md` — AppBar 贴边 bug 相关计划
 - `./plans/rollback-5a.md` — 5a 回滚记录
 - `./plans/plan-10-shell-5.md` — 后续贴边占位规划

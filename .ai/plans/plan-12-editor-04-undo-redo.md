@@ -1,4 +1,4 @@
-# phase-11-editor-undo-redo — 撤销 / 重做
+# Plan-12-editor-04 — 撤销 / 重做
 
 ## ① 核心问题
 编辑器不可撤销。误操作无法回退，用户每步操作都是永久性的。
@@ -98,3 +98,24 @@ typedef struct {
 - editor 持有历史栈和撤销语义
 - app 层转发快捷键
 - `platform/*`、`render/*`、`storage/*` 零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/editor/editor.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/app/app.c` 语法通过
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 4-1~4-3（正常路径）全部通过
+- [ ] [human] 测试 4-4~4-6（边界条件）全部通过
+- [ ] [human] 测试 4-7~4-8（回归）全部通过
+- [ ] [human] 测试 4-9~4-10（集成）全部通过
+
+### GATE 4 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

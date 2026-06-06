@@ -1,0 +1,31 @@
+# DeskNote 项目配置
+
+project:
+  name: DeskNote
+  root: E:\Git\Project\DeskNote
+  description: Windows 桌面便签应用，C 语言 + Direct2D/DirectWrite
+
+references:
+  plan: .ai/plan.md
+  architecture: docs/design/architecture.md
+  decisions: .ai/decisions.md
+  save_model: .ai/save-safety-model.md
+  phases: .ai/phases/
+
+roles:
+  active:
+    - conductor
+    - prd
+    - code-analyst
+    - planner
+    - doer
+    - tester
+    - guardian
+    - fixer
+
+standards:
+  - governance
+
+paths:
+  prd: .ai/prd/
+  fixer: .ai/fixer/

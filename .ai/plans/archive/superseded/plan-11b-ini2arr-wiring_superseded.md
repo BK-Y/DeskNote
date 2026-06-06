@@ -169,3 +169,29 @@ void Config_Shutdown(void)
 ### 方案 B：hashtable（备选）
 
 （本方案未选中，推进步骤为空）
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [agent] `test/test_config.c` 存在
+- [agent] `src/config/config.h` 和 `src/config/config.c` 存在
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 头文件存在性 | `ls src/config/config.h src/config/config.c` | 两个文件都存在 |
+| A-2 | 分层隔离：config.h 不含业务层依赖 | `grep -cE '#include.*(app\|platform\|editor\|ui\|render\|storage)' src/config/config.h` | 输出为 0 |
+| A-3 | 单元测试全部通过 | `gcc -o test_config test/test_config.c src/config/config.c src/utils/ini2arr.c && ./test_config` | 10/10 PASS |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 编辑 state.ini 设 `shell_resident_mode=2`<br>2. 启动应用 | 窗口贴右边缘，AppBar 注册 |
+| M-2 | 1. 启动应用<br>2. 菜单→贴边占位 | 窗口贴右边缘，state.ini 中 `shell_resident_mode=2` |
+| M-3 | 1. 浮动模式下拖拽窗口<br>2. 关闭→重启 | 窗口回到拖拽前记录的浮动位置 |
+
+### GATE 1-2 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

@@ -1,0 +1,507 @@
+# plan-001.yaml
+title: 重新设计配置体系 — SysInfo + DnGlobal 三层替代平面 Config
+created: 2026-06-05
+
+# ============================================================
+# Step 1: define — 定义问题
+# ============================================================
+problem: >
+  旧平面 key=value Config 层只存 int、无编译期检查、
+  运行时信息与持久化配置混在一起、不支持多便签独立配置，
+  导致 AppBar 贴边死区无法有效修复，且阻碍后续多便签功能推进。
+  需求已确认废弃旧 Plan 11，重新设计三层结构配置体系。
+
+# ============================================================
+# Step 2: analyze — 分析现状
+# ============================================================
+analysis:
+  architecture_coverage: >
+    当前架构能覆盖但需改造：
+    - storage/state_store 已提供 StateData 结构体承载持久化字段
+    - app.c 已有 g_app.shell 运行时状态结构体
+    - 缺失：system_info 运行时采集层（DPI、屏幕尺寸）
+    - 缺失：dn_global 统一结构体替代 Config_Get/Config_Set
+    - 当前 app.c 中 11 处 Config_Get + 7 处 Config_Set 需迁移
+
+  files_affected:
+    - src/app/app.h         # 新增 SysInfo / DnGlobal 结构体，AppState 增加字段
+    - src/app/app.c         # 核心改造：替换所有 Config_Get/Set 为字段访问
+    - src/config/config.h   # 标记废弃（deprecated 注释）
+    - src/config/config.c   # 标记废弃（deprecated 注释）
+    - src/storage/state_store.h  # 无需改动（保留作为持久化中间格式）
+
+  new_files: []
+  # 不新增文件；所有新增结构体放在 app.h 中
+
+# ============================================================
+# Step 3: design — 方案设计
+# ============================================================
+candidates:
+  - name: "方案 A（推荐）：统一结构体一次到位"
+    risk: 中
+    effort: 2-3 天
+    reason: >
+      一次到位消除 key=value 查询，全字段编译期类型检查。
+      sys_info 在 App_Init 集中采集，dn_global 直接嵌入 AppState。
+      所有 call site 一次替换，无中间兼容期。
+
+  - name: "方案 B：增量逐步替换"
+    risk: 低
+    effort: 3-5 天（因重复工作）
+    reason: >
+      逐字段替换，每次改一个 Config_Get 调用。
+      但会增加中间兼容期复杂度（新旧两套并存），
+      且无法立即消除 config.c 编译依赖。
+
+  - name: "方案 C：封装 sysinfo 独立模块，dn_global 仍走 StateData"
+    risk: 低
+    effort: 2-3 天
+    reason: >
+      将 system_info 封装为 sysinfo.h/c 独立模块。
+      但违背"system_info 属 app 层"的约束，且增加不必要的文件拆分。
+      当前单窗口阶段不够成熟，结构体直接放在 app.h 更简洁。
+
+recommend: "方案 A"
+
+# ============================================================
+# Step 4: decompose — 拆解执行
+# ============================================================
+
+## 核心设计原则：
+##
+## 1. SysInfo 是运行时层（app 层），启动时采集，不持久化，字段：
+##    int dpi; int scale_pct; RECT work_area;
+##    int screen_width; int screen_height;
+##
+## 2. DnGlobal 是持久化层（app 层），替代 Config_Get/Set，字段：
+##    int resident_mode; int dock_edge; int dock_thickness;
+##    int presence_state;
+##    int last_floating_left, top, width, height;
+##    int titlebar_height; int frame_visual_thickness;
+##    (release_on_hide_mode / release_on_drag_mode 不再需要)
+##
+## 3. g_app.shell 保留作为运行时 shell 状态：
+##    初始化时从 DnGlobal 复制 titlebar_height / frame_visual_thickness / resident_mode
+##    保存时写回 DnGlobal
+##
+## 4. 写策略统一：DnGlobal → StateData → StateStore_Save
+##    不再使用 Config_Set → ini2arr_write 路径
+
+## 执行阶段拆分：
+
+### Phase A: 结构体定义 + AppState 扩展
+### Phase B: 采集 system_info + 填充 dn_global（替换 Config_Init/Config_Get）
+### Phase C: 替换 Config_Set 调用（cmd103 等写路径）
+### Phase D: config 层废弃标记 + 清理 config.h 依赖
+### Phase E: 硬编码 240 替换
+### Phase F: 验证与稳定化
+
+# ============================================================
+# Step 5: boundary — 设定边界
+# ============================================================
+boundary:
+  constraints:
+    - src/config/config.c / config.h 保留但只加废弃标记，不修改功能
+    - src/utils/ini2arr.c / ini2arr.h 保留，不改动（仍被 Config 层内部使用）
+    - system_info 不持久化，只放在运行时 g_app.sys
+    - platform 层不直接访问 system_info，由 app 层传递必要参数
+    - render/editor/ui/core/storage 不依赖 system_info
+    - 不修改 StateData 结构体（保持 state_store.h 向后兼容）
+    - 不改动现有 test_config.c / test_config_edge.c（它们测试旧 Config 层，保留即可）
+    - AppShellState 结构体不删除，只减少字段冗余（如 titlebar_height / frame_visual_thickness 保留在 shell 中，从 DnGlobal 初始化）
+
+  depends_on:
+    - "旧 Plan 11 全部子阶段文件已移至 .ai/plans/archive/superseded/ 加 _superseded 后缀 ✅"
+    - "决策已写入 .ai/decisions.md ✅"
+
+# ============================================================
+# Step 6: landing — 落地方案
+# ============================================================
+
+## 结构体设计
+
+### app.h 新增
+
+```c
+/** @brief 运行时系统信息，启动时从 Windows API 采集，不持久化 */
+typedef struct {
+    int dpi;                     // GetDpiForWindow 或 GetDeviceCaps(LOGPIXELSY)
+    int scale_pct;               // dpi * 100 / 96, round to 100/125/150/200
+    RECT work_area;              // SystemParametersInfo(SPI_GETWORKAREA)
+    int screen_width;            // GetSystemMetrics(SM_CXSCREEN)
+    int screen_height;           // GetSystemMetrics(SM_CYSCREEN)
+} SysInfo;
+
+/** @brief 全局持久化配置，替代 Config_Get/Config_Set 的 key=value 查询 */
+typedef struct {
+    int resident_mode;           // AppShellResidentMode 持久化
+    int dock_edge;               // AppDockEdge
+    int dock_thickness;          // px, 默认基于屏幕比例计算
+    int presence_state;          // ShellPresenceState 持久化
+    int last_floating_left;
+    int last_floating_top;
+    int last_floating_width;
+    int last_floating_height;
+    int titlebar_height;         // 持久化值，运行时也同步到 g_app.shell
+    int frame_visual_thickness;  // 同上
+} DnGlobal;
+```
+
+### AppState 扩展
+
+在 typedef struct AppState 中增加：
+- `SysInfo sys;`     — 运行时系统信息
+- `DnGlobal global;`  — 全局持久化配置
+
+## 数据流
+
+```mermaid
+flowchart TD
+    A["Windows API<br/>(DPI, screen, work_area)"] -->|App_Init 采集| B["g_app.sys<br/>(SysInfo)"]
+    C["state.ini"] -->|StateStore_Load| D["StateData"]
+    D -->|App_ApplyShellStateData| E["g_app.global<br/>(DnGlobal)"]
+    E -->|初始化| F["g_app.shell<br/>(AppShellState)"]
+    F -->|保存时| E
+    E -->|App_SaveGlobalState| D
+    D -->|StateStore_Save| C
+    E -->|直接访问| G["所有调用点<br/>替代 Config_Get/Set"]
+```
+
+## 关键接口
+
+- `App_Init` 中采集 SysInfo：在 `Render_Init` 之后、`App_LoadInitialDocument` 之前插入
+- `App_ApplyShellStateData` 改为：StateData → DnGlobal（不再调 Config_Get）
+- `App_WriteShellStateData` 改为：DnGlobal + g_app.shell → StateData
+- 新增 `App_SaveGlobalState()`：DnGlobal + g_app.shell → StateData → StateStore_Save
+- `OnShellModeChanged` 改为直接函数调用，不再注册 Config 回调
+
+## 硬编码 240 替换规则
+
+| 位置 | 当前值 | 替换为 |
+|------|--------|--------|
+| dock_thickness 默认值 | 240 | sys.work_area 宽 * 15 / 100 |
+| last_floating_width 默认值 | 240 | sys.screen_width * 15 / 100 |
+| cmd103 中 dock_thickness 写盘 | 240 | g_app.global.dock_thickness（已存值） |
+| OnShellModeChanged / App_TryRegisterAppBarFromState 默认值 | 240 | g_app.global.dock_thickness |
+
+# ============================================================
+# Step 7: accept — 验收标准
+# ============================================================
+acceptance:
+  criteria:
+    - "无 Config_Get/Config_Set 调用（config/c 测试文件除外）"
+    - "g_app.sys 在启动时采集正确的 DPI、屏幕尺寸、work_area"
+    - "g_app.global 从 state.ini 正确填充所有字段"
+    - "Shell 模式切换（菜单 cmd 102/103）正确读写 DnGlobal，不再走 Config_Set"
+    - "一次 App_CreateGlobalState() 调用即可完成所有持久化保存"
+    - "编译通过，无新警告"
+    - "旧 Config 层所有头文件条目已标记 deprecated 注释"
+
+# ============================================================
+# Step 8: steps — 推进步骤
+# ============================================================
+steps:
+  ## ------------------------------------------------------------------
+  ## Phase A: 结构体定义 + AppState 扩展
+  ## ------------------------------------------------------------------
+  - id: A-1
+    executor: agent
+    file: src/app/app.h
+    action: >
+      在 include 之后、typedef AppShellState 之前，新增 SysInfo 和 DnGlobal 结构体定义。
+      在 AppShellState 之后、AppSaveState 之前，在 AppState 中增加：
+        SysInfo sys;
+        DnGlobal global;
+    verify: cl.exe /c /nologo src/app/app.h /I src /DUNICODE /D_UNICODE
+    expect: 编译通过（仅头文件语法检查）
+
+  ## ------------------------------------------------------------------
+  ## Phase B: sys_info 采集 + 替换 Config_Init 和 Config_Get 调用
+  ## ------------------------------------------------------------------
+  - id: B-1
+    executor: agent
+    file: src/app/app.c
+    action: >
+      在 App_Init 中，Render_Init 成功之后、StateStore_Load 之前插入 SysInfo 采集代码块：
+        - GetDpiForWindow(hwnd) 或 GetDeviceCaps(LOGPIXELSY) 采集 dpi
+        - dpi * 100 / 96 计算 scale_pct
+        - SystemParametersInfo(SPI_GETWORKAREA) 采集 work_area
+        - GetSystemMetrics(SM_CXSCREEN / SM_CYSCREEN) 采集 screen_width/height
+      采集结果存入 g_app.sys。
+    verify: （编译通过后运行时检查日志）
+    expect: 启动时 g_app.sys 字段正确
+
+  - id: B-2
+    executor: agent
+    file: src/app/app.c
+    action: >
+      重写 App_ApplyShellStateData：
+      去掉 Config_Get("titlebar_height", ...) 和 Config_Get("frame_visual_thickness", ...)，
+      改为直接从 state 字段赋值给 g_app.global：
+        g_app.global.titlebar_height = state->titlebar_height;
+        g_app.global.frame_visual_thickness = state->frame_visual_thickness;
+      然后 g_app.shell 从 g_app.global 初始化：
+        g_app.shell.titlebar_height = g_app.global.titlebar_height;
+        g_app.shell.frame_visual_thickness = g_app.global.frame_visual_thickness;
+      追加映射 state 中其余持久化字段到 g_app.global：
+        resident_mode, dock_edge, dock_thickness, presence_state,
+        last_floating_left/top/width/height
+    verify: grep -n "Config_Get" src/app/app.c
+    expect: App_ApplyShellStateData 中不再有 Config_Get 调用
+
+  - id: B-3
+    executor: agent
+    file: src/app/app.c
+    action: >
+      移除 App_Init 中的 Config_Init 调用块（约第 867-880 行）。
+      移除 App_Init 中的 #include "../config/config.h"（第 2 行）。
+      修改 App_Init 中 Config_Get 调用点：
+        line 902: int presence = Config_Get("presence_state", 0)
+          →  int presence = g_app.global.presence_state;
+        line 911-918: Config_Get("shell_resident_mode", ...)
+          →  g_app.global.resident_mode
+        line 915-918: Config_Get("last_floating_*", ...)
+          →  g_app.global.last_floating_*
+      last_floating_width 默认值 240 暂保留（Phase E 中替换为 sys 比例计算）。
+    verify: grep -n "Config_Get" src/app/app.c
+    expect: App_Init 中不再有 Config_Get 调用
+
+  - id: B-4
+    executor: agent
+    file: src/app/app.c
+    action: >
+      重写 App_TryRegisterAppBarFromState：
+        去掉 Config_Get("shell_resident_mode", ...)
+          → g_app.global.resident_mode
+        去掉 Config_Get("dock_edge", ...)
+          → g_app.global.dock_edge + ClampDockEdge()
+        去掉 Config_Get("dock_thickness", 240)
+          → g_app.global.dock_thickness
+      dock_thickness 默认值改用 sys 比例（Phase E 精确替换）。
+    verify: grep -n "Config_Get" src/app/app.c
+    expect: App_TryRegisterAppBarFromState 中不再有 Config_Get 调用
+
+  - id: B-5
+    executor: agent
+    file: src/app/app.c
+    action: >
+      重写 OnShellModeChanged：
+        改为直接接收 int old_mode, int new_mode 参数，
+        去掉 strcmp + Config_Get("dock_edge"),
+        改为 g_app.global.dock_edge / g_app.global.dock_thickness。
+      并将 OnShellModeChanged 的注册方式从 Config_OnChange 改为
+      在模式切换点直接调用（即不再是回调）。
+    verify: grep -n "Config_Get" src/app/app.c
+    expect: OnShellModeChanged 中不再有 Config_Get 调用
+
+  - id: B-6
+    executor: agent
+    file: src/app/app.c
+    action: >
+      移除 App_Init 中 Config_OnChange(OnShellModeChanged) 注册调用（第 926 行）。
+      在 cmd 102 / 103 中涉及模式切换的位置直接调用 OnShellModeChanged(old, new)。
+    verify: grep -n "Config_OnChange" src/app/app.c
+    expect: 无匹配
+
+  ## ------------------------------------------------------------------
+  ## Phase C: 替换 Config_Set 调用（写路径迁移）
+  ## ------------------------------------------------------------------
+  - id: C-1
+    executor: agent
+    file: src/app/app.c
+    action: >
+      重写 App_WriteShellStateData：
+        去除 use_custom_chrome 写入（固定值不再持久化），
+        增加 g_app.global 所有字段映射到 StateData。
+      新增 App_SaveGlobalState 函数：
+        构造 StateData，调用 App_WriteShellStateData 填充，
+        然后 StateStore_Save。
+    verify: grep -n "Config_Set" src/app/app.c
+    expect: 无匹配（应全部替换为 g_app.global 直接赋值）
+
+  - id: C-2
+    executor: agent
+    file: src/app/app.c
+    action: >
+      替换 cmd 102（浮动置顶）中的 Config_Set 调用：
+        Config_Set("last_floating_left", rect.left)
+          → g_app.global.last_floating_left = rect.left;
+        同理替换 top/width/height。
+      在 cmd 102 结尾调用 App_SaveGlobalState() 持久化。
+    verify: grep -n "Config_Set" src/app/app.c
+    expect: cmd 102 中无 Config_Set
+
+  - id: C-3
+    executor: agent
+    file: src/app/app.c
+    action: >
+      替换 cmd 103（贴边占位）中的 Config_Set 调用：
+        Config_Set("last_floating_*", ...) → g_app.global.last_floating_*
+        Config_Set("dock_edge", ...) → g_app.global.dock_edge
+        Config_Set("dock_thickness", 240) → g_app.global.dock_thickness
+        Config_Set("shell_resident_mode", ...) → g_app.global.resident_mode
+      在 cmd 103 模式切换后调用 App_SaveGlobalState()。
+    verify: grep -n "Config_Set" src/app/app.c
+    expect: cmd 103 中无 Config_Set
+
+  - id: C-4
+    executor: agent
+    file: src/app/app.c
+    action: >
+      在 App_SaveCurrentDocument 中，App_WriteShellStateData 调用后，
+      新增 App_SaveGlobalState() 确保全部 DnGlobal 字段持久化。
+    verify: grep -n "StateStore_Save" src/app/app.c
+    expect: App_SaveGlobalState 内部调 StateStore_Save
+
+  ## ------------------------------------------------------------------
+  ## Phase D: config 层废弃标记
+  ## ------------------------------------------------------------------
+  - id: D-1
+    executor: agent
+    file: src/config/config.h
+    action: >
+      在文件顶部添加废弃标记注释：
+        /**
+         * @deprecated Plan 11 已废弃。
+         * 请改用 app.h 中的 DnGlobal 结构体 + g_app.global 直接访问。
+         * 不再扩展新字段。保留供旧测试和迁移过渡期使用。
+         */
+    verify: 无
+    expect: 注释标记
+
+  - id: D-2
+    executor: agent
+    file: src/config/config.c
+    action: >
+      在文件顶部添加废弃标记注释：同 config.h。
+    verify: 无
+    expect: 注释标记
+
+  - id: D-3
+    executor: agent
+    file: src/app/app.c
+    action: >
+      确认已移除 #include "../config/config.h"。
+      确认已移除 Config_Shutdown 调用（App_Shutdown 中，如有）。
+    verify: grep -n "config" src/app/app.c
+    expect: 只保留注释中提及 config，无实际 include 或调用
+
+  ## ------------------------------------------------------------------
+  ## Phase E: 硬编码 240 替换
+  ## ------------------------------------------------------------------
+  - id: E-1
+    executor: agent
+    file: src/app/app.c
+    action: >
+      将所有硬编码 240（用于 dock_thickness / window 宽度默认值）替换为基于 sys 的比例计算：
+        dock_thickness 默认值：sys.work_area_right - sys.work_area_left * 15 / 100
+        last_floating_width 默认值：sys.screen_width * 15 / 100
+      涉及点：
+        - App_TryRegisterAppBarFromState: ClampDockThickness 内下限 200 保留
+        - OnShellModeChanged: 用 g_app.global.dock_thickness（已有值）
+        - App_Init: last_floating_width 默认值 → g_app.sys.screen_width * 15 / 100
+        - cmd 103: Config_Set("dock_thickness", 240) → g_app.global.dock_thickness（保留当前值）
+    verify: grep -n "240" src/app/app.c
+    expect: 仅保留 ClampDockThickness 的 200/500 边界值，无硬编码 240
+
+  - id: E-2
+    executor: agent
+    file: src/config/config.h
+    action: >
+      在 CONFIG_DEFAULT_DOCK_THICKNESS 240 和 CONFIG_DEFAULT_WINDOW_WIDTH 240
+      旁边添加注释标记为废弃，说明新默认值由 sys 比例计算。
+    verify: 无
+    expect: 注释标记
+
+  ## ------------------------------------------------------------------
+  ## Phase F: 编译验证
+  ## ------------------------------------------------------------------
+  - id: F-1
+    executor: agent
+    action: 完整构建 desknote 项目
+    verify: cd build && cmake .. && cmake --build .
+    expect: 编译通过，无警告
+
+  ## ------------------------------------------------------------------
+  ## 手工验证
+  ## ------------------------------------------------------------------
+  - id: M-1
+    executor: human
+    instructions:
+      - "运行 desknote.exe，验证启动时窗口位置/大小正常"
+      - "检查 %LOCALAPPDATA%\\DeskNote\\state.ini 中各字段值是否正确"
+      - "测试菜单 102/103 模式切换，检查 state.ini 中 resident_mode 是否正确更新"
+      - "测试关闭后重新启动，presence_state 和 last_floating_* 是否正确恢复"
+      - "检查硬编码 240 是否全部替换为基于屏幕宽度的比例值"
+    expected: "启动正常，state.ini 读写正确，模式切换和恢复功能正常"
+    pass_criteria: "所有手工测试项通过，无异常行为"
+    signal: "回复 conductor: M-1 pass"
+
+# ============================================================
+# 测试策略
+# ============================================================
+test_strategy:
+  auto:
+    - "F-1: 完整 CMake 构建验证"
+    - "grep 验证：Config_Get/Config_Set 在 src/app/app.c 中无残留"
+    - "grep 验证：config.h 已标记废弃注释"
+  manual:
+    - "M-1: 运行时功能验证（启动、模式切换、持久化恢复）"
+
+# ============================================================
+# GATE 定义
+# ============================================================
+gates:
+  - id: GATE-1
+    depends_on: none
+    pass_condition: >
+      A-1 编译通过 →
+      B-1~B-6 全部 Config_Get 替换完毕，编译通过 →
+      C-1~C-4 全部 Config_Set 替换完毕，编译通过
+    steps_required:
+      - A-1
+      - B-1 到 B-6
+      - C-1 到 C-4
+    handover: "agent 通知 conductor GATE-1 状态"
+
+  - id: GATE-2
+    depends_on: GATE-1
+    pass_condition: >
+      D-1~D-3 废弃标记完成 →
+      E-1~E-2 硬编码替换完成 →
+      F-1 完整编译通过
+    steps_required:
+      - D-1 到 D-3
+      - E-1 到 E-2
+      - F-1
+    handover: "agent 通知 conductor GATE-2 状态"
+
+  - id: GATE-3
+    depends_on: GATE-2
+    pass_condition: M-1 全部手工验证通过
+    steps_required:
+      - M-1
+    handover: "人回复 conductor: M-1 pass"
+
+# ============================================================
+# 执行规则
+# ============================================================
+governance:
+  pass_condition: >
+    GATE-1: 代码编译通过 +
+    GATE-2: 废弃标记 + 硬编码替换 + 完整构建 +
+    GATE-3: 手工验证全部通过
+  handover: "M-1 完成后，人通知 conductor 结果"
+
+# ============================================================
+# 不做清单
+# ============================================================
+not_doing:
+  - "不修改 StateData 结构体（state_store.h 保持向后兼容）"
+  - "不删除 config.c / config.h（保留但标记废弃）"
+  - "不修改 ini2arr.c / ini2arr.h（底层工具不变）"
+  - "不修改 test_config.c / test_config_edge.c（测试旧 Config 层）"
+  - "不新增独立 sysinfo.c / sysinfo.h 文件"
+  - "不触碰 render / editor / ui / core / storage 层的依赖"
+  - "不实现多便签独立配置（dn_note 结构体仅定义，不接入）"
+  - "不修改 CMakeLists.txt 编译依赖（config.c 保留在构建中）"

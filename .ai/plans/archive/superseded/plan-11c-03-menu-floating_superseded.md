@@ -36,3 +36,25 @@ Config_Init 已调用。
 ## 不修改
 
 src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [human] 应用已启动，窗口在普通模式
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 移动窗口到屏幕左侧<br>2. 菜单→浮动置顶 | 窗口置顶（HWND_TOPMOST），state.ini `shell_resident_mode=1` |
+| M-2 | 1. 再次菜单→浮动置顶（取消）<br>2. 观察窗口 | 取消置顶，state.ini `shell_resident_mode=0` |
+
+### GATE 5 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

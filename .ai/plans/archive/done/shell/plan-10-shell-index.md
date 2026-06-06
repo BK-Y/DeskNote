@@ -95,47 +95,47 @@
 
 | 子阶段 | 状态 | 主题 | 依赖 | 详细文件 |
 |------|------|------|------|------|
-| Shell-1a | ✅ 已完成 | 壳层状态与标题栏命令模型 | - | `./done/shell/phase-10-shell-1a_done.md` |
-| Shell-1b | ✅ 已完成 | 最小 non-client 骨架与顶区拖拽占位 | Shell-1a | `./done/shell/phase-10-shell-1b_done.md` |
-| Shell-1c | ✅ 已完成 | Frameless 窗体切换与客户区重建 | Shell-1a, Shell-1b | `./done/shell/phase-10-shell-1c_done.md` |
-| Shell-1c_repair-1 | ✅ 已完成 | 修复旧持久化状态把 frameless 回退为系统窗体 | Shell-1c | `./done/shell/phase-10-shell-1c_repair-1_done.md` |
-| Shell-1d | ✅ 已完成 | 标题栏组件与边框视觉基线 | Shell-1c_repair-1 | `./done/shell/phase-10-shell-1d_done.md` |
-| Shell-1e | ✅ 已完成 | 通用按钮组件与窗口白色边框修复 | Shell-1d | `./done/shell/phase-10-shell-1e_done.md` |
-| Shell-2a | ✅ 已完成 | 菜单按钮 + 弹出菜单 + 标题栏拖拽 | Shell-1e | `./done/shell/phase-10-shell-2a_done.md` |
-| Shell-2a_repair-1 | ✅ 已完成 | 隔离验证：隐藏按钮确认组件通道 | Shell-2a | `./done/shell/phase-10-shell-2a_repair-1_done.md` |
-| Shell-2a_repair-2 | ✅ 已完成 | 可见性修复：菜单按钮颜色 + 文字标识 | Shell-2a_repair-1 | `./done/shell/phase-10-shell-2a_repair-2_done.md` |
-| Shell-2a_repair-3 | ✅ 已完成 | 回归验证：汉堡图标 + 功能验证 | Shell-2a_repair-2 | `./done/shell/phase-10-shell-2a_repair-3_done.md` |
-| Shell-2a_repair-4 | ✅ 已完成 | render对齐扩展：Render_DrawTextCentered | Shell-2a_repair-3 | `./done/shell/phase-10-shell-2a_repair-4_done.md` |
-| Shell-2a_repair-5 | ✅ 已完成 | button改用Render_DrawTextCentered居中绘制 | Shell-2a_repair-4 | `./done/shell/phase-10-shell-2a_repair-5_done.md` |
-| Shell-2a_repair-6 | ✅ 已完成 | titlebar菜单按钮配色调整 | Shell-2a_repair-5 | `./done/shell/phase-10-shell-2a_repair-6_done.md` |
-| Shell-2a_repair-7 | ✅ 已完成 | hover坐标修正+链路验证 | Shell-2a_repair-6 | `./done/shell/phase-10-shell-2a_repair-7_done.md` |
-| Shell-2a_repair-8 | ✅ 已完成 | 鼠标移出窗口state残留修复 | Shell-2a_repair-7 | `./done/shell/phase-10-shell-2a_repair-8_done.md` |
-| Shell-2a_repair-9 | ✅ 已完成 | 恢复hover色为暖黄色 | Shell-2a_repair-8 | `./done/shell/phase-10-shell-2a_repair-9_done.md` |
-| Shell-2b_1 | ✅ 已完成 | 默认窗口240x388 + 编辑区背景铺满 | Shell-2a_repair-9 | `./done/shell/phase-10-shell-2b_1_done.md` |
-| Shell-2b_1a | ✅ 已完成 | 窗口初始位置设为屏幕右上角 | Shell-2b_1 | `./done/shell/phase-10-shell-2b_1a_done.md` |
-| Shell-2b_2 | ✅ 已完成 | 窗口四边缩放 | Shell-2b_1a | `./done/shell/phase-10-shell-2b_2_done.md` |
-| Shell-2b_3 | ✅ 已完成 | 窗口四角缩放 | Shell-2b_2 | `./done/shell/phase-10-shell-2b_3_done.md` |
-| Shell-2b_4 | ✅ 已完成 | resize后布局回归验证 | Shell-2b_3 | `./done/shell/phase-10-shell-2b_4_done.md` |
-| Shell-3a_1 | ✅ 已完成 | 托盘图标创建与销毁 | Shell-2b_4 | `./done/shell/phase-10-shell-3a_1_done.md` |
-| Shell-3a_2 | ✅ 已完成 | 托盘消息管线（左键/右键菜单） | Shell-3a_1 | `./done/shell/phase-10-shell-3a_2_done.md` |
-| Shell-3b | ✅ 已完成 | 任务栏 / 托盘 presence 矩阵与显隐链 | Shell-3a_2 | `./done/shell/phase-10-shell-3b_done.md` |
-| Shell-3c_1 | ✅ 已完成 | 关闭策略（隐藏到托盘vs退出） | Shell-3b | `./done/shell/phase-10-shell-3c_1_done.md` |
-| Shell-3c_2 | ✅ 已完成 | 状态持久化（presence+resident mode） | Shell-3c_1 | `./done/shell/phase-10-shell-3c_2_done.md` |
-| Shell-4a_1 | ✅ 已完成 | floating topmost 状态机 | Shell-3c_2 | `./done/shell/phase-10-shell-4a_1_done.md` |
-| Shell-4a_2 | ✅ 已完成 | floating topmost 持久化 | Shell-4a_1 | `./done/shell/phase-10-shell-4a_2_done.md` |
-| Shell-5a | ✅ 已完成（修复系列已归档） | AppBar 注册与贴边模型 | Shell-4a_2 | `./done/shell/phase-10-shell-5a_done.md` |
-| Shell-5a_repair-5-a | ✅ 已完成 | 启动与托盘恢复（拆分为子计划已全部完成） | Shell-5a | `./done/shell/phase-10-shell-5a_repair-5-a_done.md` |
-| Shell-5a_repair-5-a-1 | ✅ 已完成 | 启动时立即注册 AppBar | repair-5-a | `./done/shell/phase-10-shell-5a_repair-5-a-1_startup-register_done.md` |
-| Shell-5a_repair-5-a-2 | ✅ 已完成 | 从托盘恢复（已改为不重建贴边） | repair-5-a-1 | `./done/shell/phase-10-shell-5a_repair-5-a-2_restore-from-tray_done.md` |
-| Shell-5a_repair-5-a-3 | ✅ 已完成 | 浮动→贴边：保存 last_floating + 取消 topmost | repair-5-a-1 | `./done/shell/phase-10-shell-5a_repair-5-a-3_switch-from-floating_done.md` |
-| Shell-5a_repair-5-a-4 | ✅ 已完成 | 新增 release_on_hide/drag state 字段 | - | `./done/shell/phase-10-shell-5a_repair-5-a-4_release-state-fields_done.md` |
-| Shell-5a_repair-5-a-5 | ✅ 已完成 | 日志前缀与参数校验工具 | - | `./done/shell/phase-10-shell-5a_repair-5-a-5_logging-helpers_done.md` |
-| Shell-5a_repair-5-a_debug_record | ✅ 已解决 | AppBar 死区残留问题（已知 Windows 行为，记录备查） | repair-5-a-3 | `./done/shell/phase-10-shell-5a_repair-5-a_debug_record_done.md` |
-| Shell-5a_repair-5-b | ✅ 已归档 | 由 repair-5-a-3 覆盖 | Shell-4a_2 | `./done/shell/phase-10-shell-5a_repair-5-b_done.md` |
-| Shell-5a_repair-5-c | ✅ 已归档 | hide/drag 释放已实现，config 字段未接入（计划偏差） | repair-5-a-4 | `./done/shell/phase-10-shell-5a_repair-5-c_done.md` |
-| Shell-5b | ✅ 已完成 | 工作区重同步与 AppBar 异常恢复（含节流修复反馈循环） | Shell-5a | `./done/shell/phase-10-shell-5b_done.md` |
-| Shell-5c | ✅ 已完成 | 常驻模式状态提示（托盘 hover + 菜单 ✓） | Shell-5b | `./done/shell/phase-10-shell-5c_done.md` |
-| Shell-5d | ✅ 已完成 | 标题栏状态指示灯（橙色/蓝色圆点） | Shell-5c | `./done/shell/phase-10-shell-5d_done.md` |
+| Shell-1a | ✅ 已完成 | 壳层状态与标题栏命令模型 | - | `./phase-10-shell-1a_done.md` |
+| Shell-1b | ✅ 已完成 | 最小 non-client 骨架与顶区拖拽占位 | Shell-1a | `./phase-10-shell-1b_done.md` |
+| Shell-1c | ✅ 已完成 | Frameless 窗体切换与客户区重建 | Shell-1a, Shell-1b | `./phase-10-shell-1c_done.md` |
+| Shell-1c_repair-1 | ✅ 已完成 | 修复旧持久化状态把 frameless 回退为系统窗体 | Shell-1c | `./phase-10-shell-1c_repair-1_done.md` |
+| Shell-1d | ✅ 已完成 | 标题栏组件与边框视觉基线 | Shell-1c_repair-1 | `./phase-10-shell-1d_done.md` |
+| Shell-1e | ✅ 已完成 | 通用按钮组件与窗口白色边框修复 | Shell-1d | `./phase-10-shell-1e_done.md` |
+| Shell-2a | ✅ 已完成 | 菜单按钮 + 弹出菜单 + 标题栏拖拽 | Shell-1e | `./phase-10-shell-2a_done.md` |
+| Shell-2a_repair-1 | ✅ 已完成 | 隔离验证：隐藏按钮确认组件通道 | Shell-2a | `./phase-10-shell-2a_repair-1_done.md` |
+| Shell-2a_repair-2 | ✅ 已完成 | 可见性修复：菜单按钮颜色 + 文字标识 | Shell-2a_repair-1 | `./phase-10-shell-2a_repair-2_done.md` |
+| Shell-2a_repair-3 | ✅ 已完成 | 回归验证：汉堡图标 + 功能验证 | Shell-2a_repair-2 | `./phase-10-shell-2a_repair-3_done.md` |
+| Shell-2a_repair-4 | ✅ 已完成 | render对齐扩展：Render_DrawTextCentered | Shell-2a_repair-3 | `./phase-10-shell-2a_repair-4_done.md` |
+| Shell-2a_repair-5 | ✅ 已完成 | button改用Render_DrawTextCentered居中绘制 | Shell-2a_repair-4 | `./phase-10-shell-2a_repair-5_done.md` |
+| Shell-2a_repair-6 | ✅ 已完成 | titlebar菜单按钮配色调整 | Shell-2a_repair-5 | `./phase-10-shell-2a_repair-6_done.md` |
+| Shell-2a_repair-7 | ✅ 已完成 | hover坐标修正+链路验证 | Shell-2a_repair-6 | `./phase-10-shell-2a_repair-7_done.md` |
+| Shell-2a_repair-8 | ✅ 已完成 | 鼠标移出窗口state残留修复 | Shell-2a_repair-7 | `./phase-10-shell-2a_repair-8_done.md` |
+| Shell-2a_repair-9 | ✅ 已完成 | 恢复hover色为暖黄色 | Shell-2a_repair-8 | `./phase-10-shell-2a_repair-9_done.md` |
+| Shell-2b_1 | ✅ 已完成 | 默认窗口240x388 + 编辑区背景铺满 | Shell-2a_repair-9 | `./phase-10-shell-2b_1_done.md` |
+| Shell-2b_1a | ✅ 已完成 | 窗口初始位置设为屏幕右上角 | Shell-2b_1 | `./phase-10-shell-2b_1a_done.md` |
+| Shell-2b_2 | ✅ 已完成 | 窗口四边缩放 | Shell-2b_1a | `./phase-10-shell-2b_2_done.md` |
+| Shell-2b_3 | ✅ 已完成 | 窗口四角缩放 | Shell-2b_2 | `./phase-10-shell-2b_3_done.md` |
+| Shell-2b_4 | ✅ 已完成 | resize后布局回归验证 | Shell-2b_3 | `./phase-10-shell-2b_4_done.md` |
+| Shell-3a_1 | ✅ 已完成 | 托盘图标创建与销毁 | Shell-2b_4 | `./phase-10-shell-3a_1_done.md` |
+| Shell-3a_2 | ✅ 已完成 | 托盘消息管线（左键/右键菜单） | Shell-3a_1 | `./phase-10-shell-3a_2_done.md` |
+| Shell-3b | ✅ 已完成 | 任务栏 / 托盘 presence 矩阵与显隐链 | Shell-3a_2 | `./phase-10-shell-3b_done.md` |
+| Shell-3c_1 | ✅ 已完成 | 关闭策略（隐藏到托盘vs退出） | Shell-3b | `./phase-10-shell-3c_1_done.md` |
+| Shell-3c_2 | ✅ 已完成 | 状态持久化（presence+resident mode） | Shell-3c_1 | `./phase-10-shell-3c_2_done.md` |
+| Shell-4a_1 | ✅ 已完成 | floating topmost 状态机 | Shell-3c_2 | `./phase-10-shell-4a_1_done.md` |
+| Shell-4a_2 | ✅ 已完成 | floating topmost 持久化 | Shell-4a_1 | `./phase-10-shell-4a_2_done.md` |
+| Shell-5a | ✅ 已完成（修复系列已归档） | AppBar 注册与贴边模型 | Shell-4a_2 | `./phase-10-shell-5a_done.md` |
+| Shell-5a_repair-5-a | ✅ 已完成 | 启动与托盘恢复（拆分为子计划已全部完成） | Shell-5a | `./phase-10-shell-5a_repair-5-a_done.md` |
+| Shell-5a_repair-5-a-1 | ✅ 已完成 | 启动时立即注册 AppBar | repair-5-a | `./phase-10-shell-5a_repair-5-a-1_startup-register_done.md` |
+| Shell-5a_repair-5-a-2 | ✅ 已完成 | 从托盘恢复（已改为不重建贴边） | repair-5-a-1 | `./phase-10-shell-5a_repair-5-a-2_restore-from-tray_done.md` |
+| Shell-5a_repair-5-a-3 | ✅ 已完成 | 浮动→贴边：保存 last_floating + 取消 topmost | repair-5-a-1 | `./phase-10-shell-5a_repair-5-a-3_switch-from-floating_done.md` |
+| Shell-5a_repair-5-a-4 | ✅ 已完成 | 新增 release_on_hide/drag state 字段 | - | `./phase-10-shell-5a_repair-5-a-4_release-state-fields_done.md` |
+| Shell-5a_repair-5-a-5 | ✅ 已完成 | 日志前缀与参数校验工具 | - | `./phase-10-shell-5a_repair-5-a-5_logging-helpers_done.md` |
+| Shell-5a_repair-5-a_debug_record | ✅ 已解决 | AppBar 死区残留问题（已知 Windows 行为，记录备查） | repair-5-a-3 | `./phase-10-shell-5a_repair-5-a_debug_record_done.md` |
+| Shell-5a_repair-5-b | ✅ 已归档 | 由 repair-5-a-3 覆盖 | Shell-4a_2 | `./phase-10-shell-5a_repair-5-b_done.md` |
+| Shell-5a_repair-5-c | ✅ 已归档 | hide/drag 释放已实现，config 字段未接入（计划偏差） | repair-5-a-4 | `./phase-10-shell-5a_repair-5-c_done.md` |
+| Shell-5b | ✅ 已完成 | 工作区重同步与 AppBar 异常恢复（含节流修复反馈循环） | Shell-5a | `./phase-10-shell-5b_done.md` |
+| Shell-5c | ✅ 已完成 | 常驻模式状态提示（托盘 hover + 菜单 ✓） | Shell-5b | `./phase-10-shell-5c_done.md` |
+| Shell-5d | ✅ 已完成 | 标题栏状态指示灯（橙色/蓝色圆点） | Shell-5c | `./phase-10-shell-5d_done.md` |
 
 ## 推荐推进顺序
 
@@ -169,7 +169,7 @@ Shell-5c (常驻模式状态提示)
 
 1. `../plan.md`
 2. `./phase-10-shell-index.md`
-3. 当前 ready 的 `./phase-10-shell-Xx.md` 或 `./done/shell/phase-10-shell-Xx_done.md`
+3. 当前 ready 的 `./phase-10-shell-Xx.md` 或 `./phase-10-shell-Xx_done.md`
 4. 需要核对边界时，再读 `../../docs/design/architecture.md`
 
 ## 完成标准

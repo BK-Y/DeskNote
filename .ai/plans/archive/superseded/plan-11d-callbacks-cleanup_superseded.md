@@ -98,6 +98,35 @@ Config_OnChange(OnShellModeChanged);
 - [ ] cmd103/OnEndDrag 中不再有显式 AppBar_Register/Unregister（已由 on_change 接管）
 - [ ] `App_WriteShellStateData` 在 App_EnableCustomChrome 中不再调用（但函数体保留，待后续）
 - [ ] 分层核实：on_change 回调位于 app 层，暂不移动（shell 拆分后移入 shell 模块）
+- [ ] Config_OnChange 在 App_Init 中仅注册一次，不存在重复注册导致回调被触发多次
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [agent] 所有 11c 子阶段已完成
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+| A-2 | Config_OnChange 注册次数 | `grep -c 'Config_OnChange' src/app/app.c` | 1 行（仅 App_Init 中注册一次） |
+| A-3 | AppBar_Register 残留 | `grep -c 'AppBar_Register' src/app/app.c` | ≤1 行（仅 on_change 回调中保留） |
+| A-4 | AppBar_Unregister 残留 | `grep -c 'AppBar_Unregister' src/app/app.c` | ≤1 行（仅 on_change 回调中保留） |
+| A-5 | App_WriteShellStateData 调用 | `grep -c 'App_WriteShellStateData' src/app/app.c` | ≤1 行（仅文档管理） |
+| A-6 | StateStore 调用残留 | `grep 'StateStore' src/app/app.c` | 仅剩文档管理相关调用 |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 菜单→贴边占位 | Config_Set 触发 on_change → AppBar_Register + SetPosition，无重复注册 |
+| M-2 | 1. 贴边→退出贴边 | Config_Set 触发 on_change → AppBar_Unregister |
+| M-3 | 1. 贴边→拖离浮动 | Config_Set 触发 on_change → AppBar_Unregister + SetWindowPos(HWND_TOPMOST) |
+
+### GATE 8 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈
 
 ## 推进步骤
 

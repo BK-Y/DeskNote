@@ -150,39 +150,17 @@ platform → app → page
 
 ---
 
-### 2.3 page（尚未拆分，位置预留）
+### 2.3 page（预留，待拆分）
 
-> 当前所有状态管理散落在 `app.c` 及各处，以下为拆分后的目标定义。
+> 当前相关逻辑散落在 `app.c`（状态恢复、shell 状态应用等）。拆分后归入 app 层，职责为窗口生命周期管理 + 全局配置入口。
 
-| 字段 | 内容 |
-|------|------|
-| **位置** | 目标：`src/page/page.c` / `page.h` |
-| **归属层** | app |
-| **职责** | 窗口（page）的完整生命周期管理：统一全局配置入口（shell 模式、editor 设置、存储策略等）；将全局配置和 per-page 配置（颜色/位置/大小）路由到正确的持久化位置（state.ini vs note 文件）；多窗口时作为窗口+note+配置的组合容器 |
-| **不负责** | 具体模式切换的伴生行为编排（→ shell）；编辑器核心逻辑（→ editor）；Win32 窗口句柄管理（→ platform） |
-| **对外接口** | 目标：`Page_Create`、`Page_Close`、`Page_GetConfig`、`Page_SetConfig` |
-| **禁止调用方** | `editor`、`ui`、`render`、`core`、`platform` |
-| **当前状态** | 待拆分。当前相关逻辑散落在 `app.c` 中（`App_Init` 中的状态恢复、`App_ApplyShellStateData`、`App_WriteShellStateData`） |
+### 2.4 shell（预留，待拆分）
+
+> 当前相关代码散落在 `app.c`、`appbar.c`、`window.c` 中。拆分后归入 app 层，职责为窗口模式状态机的唯一管理 + 模式切换编排。
 
 ---
 
-### 2.4 shell（尚未拆分，位置预留）
-
-> 当前 shell 逻辑分散在 `app.c`、`appbar.c`、`window.c` 中，以下为拆分后的目标定义。
-
-| 字段 | 内容 |
-|------|------|
-| **位置** | 目标：`src/shell/shell.c` / `shell.h` |
-| **归属层** | app |
-| **职责** | 窗口模式状态（NONE / FLOATING_TOPMOST / EDGE_RESERVED）的唯一管理；模式切换时的伴生行为编排（AppBar 注册/注销、Z 序修改、状态持久化） |
-| **不负责** | 编辑器导航（→ editor）；渲染（→ render）；UI 绘制（→ ui）；Win32 消息循环（→ platform）；AppBar API 的具体 Win32 实现细节（→ platform/appbar） |
-| **对外接口** | 目标：`Shell_SetMode(hwnd, mode, ...)`、`Shell_GetMode()` |
-| **禁止调用方** | `editor`、`render`、`ui`、`core`、`storage` 禁止调用 shell |
-| **当前状态** | 待拆分。当前相关代码散落在 `app.c`（`App_TryRegisterAppBarFromState`、cmd103、`App_OnEndDrag`、`App_HideToTray`、`App_RestoreFromTray`）和 `window.c`（WM_DISPLAYCHANGE / WM_SETTINGCHANGE / ABN_FULLSCREENAPP） |
-
----
-
-### 2.4 ui
+### 2.5 ui
 
 #### editor_view
 
@@ -353,4 +331,13 @@ src/platform/
 1. 发现违规代码 → 在 `.ai/decisions.md` 中记录违规位置
 2. 判断是"需要即时修复"还是"纳入计划修复"
 3. 即时修复 → 直接改代码
-4. 计划修复 → 在 `.ai/plans/` 中创建设计计划，排入后续阶段
+4. 计划修复 → 创建 PRD（`/conductor` → `/prd`），排入后续阶段
+
+---
+
+## 五、架构维护
+
+1. **触发更新** — 任何涉及新增模块、分层关系变更的 PRD 或计划，必须先更新本文档
+2. **谁更新** — planner 出方案时同步更新，guardian 审查时验证一致性
+3. **禁止** — 先改代码后补架构文档，视为架构违规
+4. **本文档与实际代码不一致视为未完成**，不允许合入

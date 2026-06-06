@@ -37,3 +37,25 @@ Config_Init 已调用。
 ## 不修改
 
 src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [human] 应用已启动，窗口为贴边模式（`shell_resident_mode=2`）
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 贴边→拖离边缘（拖出约 100px）<br>2. 松开鼠标 | 窗口变为浮动置顶，state.ini `shell_resident_mode=1` + floating 坐标更新 |
+| M-2 | 1. 贴边→拖离边缘（拖到屏幕中央附近）<br>2. 松开鼠标 | 窗口变为普通窗口（不置顶），state.ini `shell_resident_mode=0` |
+
+### GATE 6 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

@@ -42,3 +42,29 @@ App_Init → Config_Get("shell_resident_mode") → EDGE_RESERVED? → AppBar_Reg
 ## 不修改
 
 src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [human] `state.ini` 位于 `%LOCALAPPDATA%\DeskNote\state.ini`
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+| A-2 | StateStore_Save 残留检查 | `grep -c 'StateStore_Save' src/app/app.c` | ≤1 行（仅文档管理） |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 | 已知问题 |
+|------|---------|---------|---------|
+| M-1 | 1. 编辑 state.ini 设 `shell_resident_mode=2`<br>2. 启动应用 | 窗口贴右边缘，AppBar 注册 | — |
+| M-2 | 1. 编辑 state.ini 设 `shell_resident_mode=1`<br>2. 设 `last_floating_left=100`、`last_floating_top=200`、`last_floating_width=240`、`last_floating_height=388`<br>3. 启动应用 | 窗口在屏幕 (100,200) 位置，置顶 | ⚠️ A-2 卡点：冷启动浮动坐标可能为 (0,0) |
+| M-3 | 1. 编辑 state.ini 设 `shell_resident_mode=0`<br>2. 启动应用 | 普通窗口，无特殊置顶/贴边 | — |
+
+### GATE 3 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈
+
+> **已知问题**：M-2（冷启动浮动坐标 0,0）的根因见 `plan-11-test.md` → `当前阻塞` 分析。当前 GATE 3 因此阻塞。

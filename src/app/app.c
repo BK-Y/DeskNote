@@ -778,6 +778,12 @@ static void App_TryRegisterAppBarFromState(HWND hwnd)
     int edge = Config_Get("dock_edge", APP_DOCK_RIGHT);
     int thickness = Config_Get("dock_thickness", 240);
 
+    /* 保护：当 state.ini 中 dock 值为 0（未初始化/损坏）时，使用合理默认值 */
+    if (edge < APP_DOCK_LEFT || edge > APP_DOCK_BOTTOM)
+        edge = APP_DOCK_RIGHT;
+    if (thickness < 100 || thickness > 500)
+        thickness = 240;
+
     if (AppBar_Register(hwnd) == 0)
     {
         AppBar_SetPosition(hwnd, (AppDockEdge)edge, thickness);
@@ -793,8 +799,12 @@ int App_Run(void)
 /* Plan-11d: Config on_change 回调 — 统一处理 AppBar ops */
 static void OnShellModeChanged(const char* key, int old_val, int new_val)
 {
-    (void)key;
     if (old_val == new_val) return;
+
+    /* 只响应 shell_resident_mode 变更，忽略 dock_edge / dock_thickness 等其它键 */
+    if (strcmp(key, "shell_resident_mode") != 0)
+        return;
+
     HWND hwnd = g_app.hwnd;
 
     if (old_val == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
@@ -853,6 +863,21 @@ int App_Init(HWND hwnd)
     g_app.menu_button_state = BUTTON_STATE_NORMAL;
     g_app.mouse_down = 0;
     App_InitShellStateDefaults();
+
+		/* Plan-11b: 初始化配置层，从 %LOCALAPPDATA%\\DeskNote\\state.ini 加载到内存表 */
+		{
+		    wchar_t wide_path[MAX_PATH];
+		    char    path[MAX_PATH];
+		    if (StateStore_GetStatePath(wide_path, MAX_PATH) == 0)
+		    {
+		        WideCharToMultiByte(CP_ACP, 0, wide_path, -1, path, MAX_PATH, NULL, NULL);
+		        Config_Init(path);
+		    }
+		    else
+		    {
+		        Config_Init("state.ini");  /* fallback */
+		    }
+		}
 
     if (App_LoadInitialDocument() != 0)
     {

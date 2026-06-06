@@ -1,4 +1,4 @@
-# phase-11-editor-scroll — 滚动体验优化
+# Plan-12-editor-03 — 滚动体验优化
 
 ## ① 核心问题
 当前滚轮滚动是离散的（每格固定步长 48px），无平滑过渡。超宽内容无法横向浏览。
@@ -76,3 +76,25 @@
 - `EditorView` 负责坐标偏移（ui 层）
 - `Render` 根据偏移绘制（render 层）
 - `platform/*` 仅转发滚轮消息，零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/app/app.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/ui/editor_view.c` 语法通过
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 3-1~3-2（正常路径）全部通过
+- [ ] [human] 测试 3-3~3-4（边界条件）全部通过
+- [ ] [human] 测试 3-5（错误处理）全部通过
+- [ ] [human] 测试 3-6~3-7（回归）全部通过
+- [ ] [human] 测试 3-8（集成）全部通过
+
+### GATE 3 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

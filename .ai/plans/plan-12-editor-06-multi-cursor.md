@@ -1,4 +1,4 @@
-# phase-11-editor-multi-cursor — 多光标
+# Plan-12-editor-06 — 多光标
 
 ## ① 核心问题
 只能在一个位置编辑。无法同时在多个位置插入/删除文本。
@@ -90,3 +90,25 @@ typedef struct {
 
 ## ⑨ 旧计划来源
 原 `done/phase-15_superseded.md` 全部内容。
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/editor/editor.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/app/app.c` 语法通过
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 6-1~6-2（正常路径）全部通过
+- [ ] [human] 测试 6-3~6-4（边界条件）全部通过
+- [ ] [human] 测试 6-5（错误处理）全部通过
+- [ ] [human] 测试 6-6~6-8（回归）全部通过
+- [ ] [human] 测试 6-9（集成）全部通过
+
+### GATE 6 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

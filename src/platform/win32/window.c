@@ -130,18 +130,20 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         AppBar_ReRegister(hwnd);
         return 0;
 
-    /* Shell-5b: 任务栏/工作区变化 — 根据标记判断是否为自己触发 */
+    /* Shell-5b: 任务栏/工作区变化 */
     case WM_SETTINGCHANGE:
         if (wParam == SPI_SETWORKAREA)
         {
+            /* 自己触发的消息：仅消费标记，不做任何重协商 */
             if (AppBar_ConsumeOwnWorkareaChange())
-            {
-                /* 我们自己触发的，跳过 */
                 return 0;
+
+            /* 外部变化（分辨率/任务栏迁移）只在当前未注册时尝试恢复，
+             * 避免对已稳定的 AppBar 再次协商导致工作区被二次扣减。 */
+            if (!AppBar_IsRegistered(hwnd) && App_GetResidentMode() == APP_SHELL_RESIDENT_MODE_EDGE_RESERVED)
+            {
+                App_SubmitShellCommand(APP_SHELL_COMMAND_ENTER_EDGE_RESERVED);
             }
-            /* 外部变化，重新协商 */
-            if (AppBar_IsRegistered(hwnd))
-                AppBar_ReRegister(hwnd);
         }
         return 0;
 

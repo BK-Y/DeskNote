@@ -1,4 +1,4 @@
-# phase-12-markdown-hit-test — Markdown 富文本命中
+# Plan-13-markdown-01 — Markdown 富文本命中
 
 ## ① 核心问题
 编辑器将所有文本视为纯文本。点击链接、勾选框、标题等语义区域时，无特殊交互行为。
@@ -36,21 +36,21 @@ typedef struct {
 ### 正常路径
 | 编号 | 用例 | 操作 | 预期 |
 |------|------|------|------|
-| 12-1 | 点击链接文本 | Markdown 文档中有 `[link](url)`，点击 "link" | `out_semantic->type == MD_HIT_LINK` |
-| 12-2 | 点击普通文本 | 点击非语义区域的文本 | `out_semantic->type == MD_HIT_NONE` |
-| 12-3 | 点击勾选框 | 文档中有 `- [ ] task`，点击 `[ ]` | `out_semantic->type == MD_HIT_CHECKBOX` |
+| 13-1 | 点击链接文本 | Markdown 文档中有 `[link](url)`，点击 "link" | `out_semantic->type == MD_HIT_LINK` |
+| 13-2 | 点击普通文本 | 点击非语义区域的文本 | `out_semantic->type == MD_HIT_NONE` |
+| 13-3 | 点击勾选框 | 文档中有 `- [ ] task`，点击 `[ ]` | `out_semantic->type == MD_HIT_CHECKBOX` |
 
 ### 边界条件
 | 编号 | 用例 | 操作 | 预期 |
 |------|------|------|------|
-| 12-4 | 纯文本文档 | 无 Markdown 语法的文档 | 所有点击 `MD_HIT_NONE` |
-| 12-5 | 嵌套语义 | 标题中包含链接 `# [title](url)` | 按最近节点类型返回 |
+| 13-4 | 纯文本文档 | 无 Markdown 语法的文档 | 所有点击 `MD_HIT_NONE` |
+| 13-5 | 嵌套语义 | 标题中包含链接 `# [title](url)` | 按最近节点类型返回 |
 
 ### 回归
 | 编号 | 用例 | 操作 | 预期 |
 |------|------|------|------|
-| 12-6 | 纯文本编辑不变 | 正常打字 | 编辑不受影响 |
-| 12-7 | 编译通过 | `cmake --build build` | 零错误 |
+| 13-6 | 纯文本编辑不变 | 正常打字 | 编辑不受影响 |
+| 13-7 | 编译通过 | `cmake --build build` | 零错误 |
 
 ## ⑥ 修改文件清单
 
@@ -71,3 +71,25 @@ typedef struct {
 - `core/` 提供语义数据，不依赖任何上层
 - `render/` 在 hit test 中查询语义信息
 - `platform/*`、`storage/*` 零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/core/document.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/render/render.c` 语法通过
+- [ ] [agent] 确认 `document.h` 中 `MdSemanticInfo` / `MdHitType` 已定义
+- [ ] [agent] 确认 `Document_GetSemanticAt(offset)` 接口可用
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 13-1~13-2（正常路径）全部通过
+- [ ] [human] 测试 13-4~13-5（边界条件）全部通过
+- [ ] [human] 测试 13-6~13-7（回归）全部通过
+
+### GATE 1 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

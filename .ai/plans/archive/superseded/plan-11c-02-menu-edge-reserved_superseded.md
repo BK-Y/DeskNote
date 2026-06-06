@@ -38,3 +38,26 @@ Config_Init 已调用。
 ## 不修改
 
 src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [human] state.ini 可读写
+- [human] 窗口在普通模式（`shell_resident_mode=0`）
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 点击菜单→贴边占位<br>2. 检查 state.ini | 窗口贴右边缘，state.ini `shell_resident_mode=2`、`dock_edge`、`dock_thickness` 更新 |
+| M-2 | 1. 贴边状态下再次点击菜单→贴边占位<br>2. 观察窗口位置 | 窗口移回屏幕中央，state.ini `shell_resident_mode=0` |
+
+### GATE 4 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

@@ -1,4 +1,4 @@
-# phase-11-editor-02-clipboard — 剪贴板操作与全局快捷键
+# Plan-12-editor-02 — 剪贴板操作与全局快捷键
 
 ## ① 核心问题
 有选区时无法复制/剪切，也无法粘贴文本。Delete 键在有选区时应删除选区内容。这些操作只能通过鼠标右键菜单完成，但右键菜单尚未实现。
@@ -106,3 +106,25 @@ case 'C': // Ctrl+C
 - app 层调用 `OpenClipboard`/`SetClipboardData`（Win32 API）
 - editor 层只处理 `EDITOR_KEY_DELETE` 等编辑操作
 - `platform/*`、`render/*`、`storage/*` 零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/editor/editor.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/app/app.c` 语法通过
+- [ ] [agent] 确认 `editor.h` 中 `EDITOR_KEY_DELETE` 枚举已定义
+- [ ] [agent] 确认 `editor.h` 中 `Editor_InsertText` 已声明
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 2-1~2-4（正常路径）全部通过
+- [ ] [human] 测试 2-5~2-7（边界条件）全部通过
+- [ ] [human] 测试 2-8~2-9（回归）全部通过
+
+### GATE 2 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

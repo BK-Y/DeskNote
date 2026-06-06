@@ -38,3 +38,25 @@ Config_Init 已调用。
 ## 不修改
 
 src/render/*、src/editor/*、src/core/*、src/ui/*、src/platform/*、src/storage/*
+
+## 测试用例
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 确保旧进程已关闭
+- [human] 应用已启动，窗口为贴边模式
+
+### 自动化检查  [agent 执行]
+| 编号 | 验证内容 | 命令 | 预期结果 |
+|------|---------|------|---------|
+| A-1 | 编译语法 | `gcc -fsyntax-only src/app/app.c` | 0 error |
+
+### 手工验证  [human 执行]
+| 编号 | 操作步骤 | 预期结果 |
+|------|---------|---------|
+| M-1 | 1. 贴边→窗口关闭（WM_CLOSE 隐藏）<br>2. 检查 state.ini | 窗口隐藏，托盘图标可见，state.ini `presence_state=1` |
+| M-2 | 1. 托盘图标左键恢复<br>2. 检查 state.ini | 窗口恢复显示，state.ini `presence_state=0` |
+
+### GATE 7 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈

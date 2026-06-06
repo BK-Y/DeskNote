@@ -1,4 +1,4 @@
-# phase-11-editor-context-menu — 右键菜单
+# Plan-12-editor-05 — 右键菜单
 
 ## ① 核心问题
 无法通过鼠标右键执行剪切/复制/粘贴。所有编辑操作只能通过键盘。
@@ -73,3 +73,25 @@
 - platform 层转发 `WM_RBUTTONUP` 和 `WM_COMMAND`（菜单项点击）
 - editor 层提供选区状态判断
 - `render/*`、`storage/*` 零改动
+
+## 验收标准
+
+### 前置条件
+- [agent] 构建产物 `build/desknote.exe` 已生成
+- [human] 如涉及启动应用，确保旧进程已关闭
+
+### 自动化检查  [agent 执行]
+- [ ] [agent] `cmake --build build` 零错误零警告
+- [ ] [agent] `gcc -fsyntax-only src/app/app.c` 语法通过
+- [ ] [agent] `gcc -fsyntax-only src/platform/win32/window.c` 语法通过
+
+### 手工验证  [human 执行]
+- [ ] [human] 测试 5-1~5-4（正常路径）全部通过
+- [ ] [human] 测试 5-5~5-6（边界条件）全部通过
+- [ ] [human] 测试 5-7（错误处理）全部通过
+- [ ] [human] 测试 5-8~5-9（回归）全部通过
+- [ ] [human] 测试 5-10（集成）全部通过
+
+### GATE 5 通过条件
+- [ ] [agent] 全部自动化检查通过
+- [ ] [human] 全部手工验证通过，结果已反馈
